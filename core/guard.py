@@ -1,3 +1,4 @@
+# core/guard.py
 class GuardDecision:
     def __init__(self, allow: bool, require_confirm: bool = False, message: str = ""):
         self.allow = allow
