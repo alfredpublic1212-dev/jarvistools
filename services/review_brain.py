@@ -5,6 +5,7 @@ from typing import List, Dict
 # Import ONLY logic — no runtime, no jarvis.py
 from core.judge import evaluate
 from core.score_engine import score_action
+from core.ast_analyzer import analyze_python_ast
 
 
 # -----------------------------
@@ -55,6 +56,18 @@ class ReviewBrain:
                     "message": message,
                     "confidence": "high",
                 })
+
+
+        # -----------------------------------
+        # 1.5 AST structural analysis (NEW)
+        # -----------------------------------
+
+        ast_issues = []
+        if language.lower() in ["python", "py", "auto"]:
+            ast_issues = analyze_python_ast(code)
+
+        results.extend(ast_issues)
+
 
         # -----------------------------------
         # 2️ Ask Jarvis core to reason about it
@@ -116,3 +129,4 @@ Code:
             })
 
         return results
+
