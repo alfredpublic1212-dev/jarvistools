@@ -634,7 +634,7 @@ Comparable in category to:
 
 But with a custom reasoning core.
 
-## **16\. Core Philosophy (Final)**
+## **16\. Core Philosophy **
 
 Jarvis Core is sacred.  
 The Sandbox is a tool shell.
@@ -645,7 +645,7 @@ The platform owns the policy.
 
 No external AI is required.
 
-# **17\. Concrete Behavioral Examples (Current System)**
+# **17\. Concrete Behavioral Examples **
 
 This section documents exactly what the Jarvis Sandbox Service does today, using real input → output examples. This is critical for reviewers to understand that the system is not a mock, not a stub, and not a demo illusion.
 
