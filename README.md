@@ -242,7 +242,7 @@ DevSync UI
 DevSync Backend (/api/ai/review)  
     |  
     v  
-Jarvis Sandbox Service (FastAPI)  
+Jarvis Sandbox Service (Render)  
     |  
     v  
 Sandbox Reasoning Core (stateless)
