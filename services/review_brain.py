@@ -99,7 +99,7 @@ Code:
         )
 
         # If Jarvis judge is uncomfortable
-        if not decision.allow:
+        if not decision.allow and results:
             results.append({
                 "severity": "warning",
                 "category": "security",
