@@ -4,8 +4,9 @@ import ast
 from typing import List, Dict
 
 
-def _issue(severity: str, category: str, message: str, confidence: str = "medium") -> Dict:
+def issue(rule_id: str, severity: str, category: str, message: str, confidence: str = "medium") -> Dict:
     return {
+        "rule_id": rule_id,
         "severity": severity,
         "category": category,
         "message": message,
@@ -23,10 +24,7 @@ class ComplexityVisitor(ast.NodeVisitor):
         param_count = len(node.args.args)
 
         for n in ast.walk(node):
-            if isinstance(
-                n,
-                (ast.If, ast.For, ast.While, ast.Try, ast.ExceptHandler)
-            ):
+            if isinstance(n, (ast.If, ast.For, ast.While, ast.Try, ast.ExceptHandler)):
                 complexity += 1
             elif isinstance(n, ast.BoolOp):
                 complexity += len(n.values) - 1
@@ -34,7 +32,8 @@ class ComplexityVisitor(ast.NodeVisitor):
         # Cyclomatic complexity
         if complexity > 12:
             self.issues.append(
-                _issue(
+                issue(
+                    "COMPLEXITY_CYCLOMATIC_HIGH",
                     "warning",
                     "maintainability",
                     f"High cyclomatic complexity in function '{node.name}' (score={complexity}).",
@@ -43,7 +42,8 @@ class ComplexityVisitor(ast.NodeVisitor):
             )
         elif complexity > 7:
             self.issues.append(
-                _issue(
+                issue(
+                    "COMPLEXITY_CYCLOMATIC_MODERATE",
                     "warning",
                     "maintainability",
                     f"Moderate cyclomatic complexity in function '{node.name}' (score={complexity}).",
@@ -53,7 +53,8 @@ class ComplexityVisitor(ast.NodeVisitor):
         # Function size
         if statement_count > 75:
             self.issues.append(
-                _issue(
+                issue(
+                    "STRUCT_FUNCTION_VERY_LARGE",
                     "warning",
                     "maintainability",
                     f"Function '{node.name}' is very large ({statement_count} statements).",
@@ -62,7 +63,8 @@ class ComplexityVisitor(ast.NodeVisitor):
             )
         elif statement_count > 40:
             self.issues.append(
-                _issue(
+                issue(
+                    "STRUCT_FUNCTION_LARGE",
                     "warning",
                     "maintainability",
                     f"Function '{node.name}' is large ({statement_count} statements).",
@@ -72,7 +74,8 @@ class ComplexityVisitor(ast.NodeVisitor):
         # Parameter count
         if param_count > 8:
             self.issues.append(
-                _issue(
+                issue(
+                    "DESIGN_TOO_MANY_PARAMS",
                     "warning",
                     "design",
                     f"Function '{node.name}' has too many parameters ({param_count}).",
@@ -81,7 +84,8 @@ class ComplexityVisitor(ast.NodeVisitor):
             )
         elif param_count > 5:
             self.issues.append(
-                _issue(
+                issue(
+                    "DESIGN_MANY_PARAMS",
                     "warning",
                     "design",
                     f"Function '{node.name}' has many parameters ({param_count}).",
