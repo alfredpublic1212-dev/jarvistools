@@ -5,6 +5,7 @@ from typing import List, Dict
 # Import ONLY static analysis logic
 from core.ast_analyzer import analyze_python_ast
 from core.structure_analyzer import analyze_structure
+from core.complexity_engine import analyze_complexity
 
 
 # -----------------------------
@@ -64,6 +65,15 @@ class ReviewBrain:
 
         structure_issues = analyze_structure(code)
         results.extend(structure_issues)
+
+
+        # -----------------------------------
+        # 2.75 Complexity analysis (B.4)
+        # -----------------------------------
+
+        complexity_issues = analyze_complexity(code)
+        results.extend(complexity_issues)
+
 
 
         # -----------------------------------
