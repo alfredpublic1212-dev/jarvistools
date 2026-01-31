@@ -1,5 +1,3 @@
-# services/review_brain.py
-
 from typing import List, Dict
 from core.ast_analyzer import analyze_python_ast
 from core.structure_analyzer import analyze_structure
@@ -8,14 +6,18 @@ from core.complexity_engine import analyze_complexity
 
 DANGEROUS_PATTERNS = [
     ("rm -rf", "This command deletes files recursively and is extremely dangerous."),
-    ("mkfs", "This command formats a filesystem and destroys data."),
+    ("format c:", "This command formats a disk and destroys data."),
+    ("mkfs", "This command formats a filesystem and can destroy data."),
 ]
 
 
 class ReviewBrain:
+    def __init__(self):
+        print("[ReviewBrain] Initialized (analysis-only mode)")
+
     def review_code(self, payload: dict) -> List[Dict]:
         code = payload.get("code", "")
-        language = payload.get("language", "unknown").lower()
+        language = payload.get("language", "unknown")
 
         results: List[Dict] = []
 
@@ -30,7 +32,7 @@ class ReviewBrain:
                     "confidence": "high",
                 })
 
-        if language in ("python", "py", "auto"):
+        if language.lower() in ["python", "py", "auto"]:
             results.extend(analyze_python_ast(code))
             results.extend(analyze_structure(code))
             results.extend(analyze_complexity(code))
