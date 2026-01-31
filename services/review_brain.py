@@ -4,6 +4,7 @@ from typing import List, Dict
 
 # Import ONLY static analysis logic
 from core.ast_analyzer import analyze_python_ast
+from core.structure_analyzer import analyze_structure
 
 
 # -----------------------------
@@ -56,6 +57,14 @@ class ReviewBrain:
         if language.lower() in ["python", "py", "auto"]:
             ast_issues = analyze_python_ast(code)
             results.extend(ast_issues)
+
+        # -----------------------------------
+        # 2.5 Structural complexity analysis
+        # -----------------------------------
+
+        structure_issues = analyze_structure(code)
+        results.extend(structure_issues)
+
 
         # -----------------------------------
         # 3) If nothing found, return clean bill
