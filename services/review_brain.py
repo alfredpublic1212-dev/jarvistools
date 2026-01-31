@@ -1,9 +1,16 @@
 # services/review_brain.py
+
 from typing import List, Dict
+
 from core.ast_analyzer import analyze_python_ast
 from core.structure_analyzer import analyze_structure
 from core.complexity_engine import analyze_complexity
+from core.cfg_engine import analyze_cfg
 
+
+# -----------------------------------
+# Regex prefilter (ONLY destructive literals)
+# -----------------------------------
 
 DANGEROUS_PATTERNS = [
     ("rm -rf", "This command deletes files recursively and is extremely dangerous."),
@@ -22,6 +29,9 @@ class ReviewBrain:
 
         results: List[Dict] = []
 
+        # -----------------------------------
+        # 1) Regex Prefilter (non-AST only)
+        # -----------------------------------
         lowered = code.lower()
         for pattern, message in DANGEROUS_PATTERNS:
             if pattern in lowered:
@@ -33,11 +43,30 @@ class ReviewBrain:
                     "confidence": "high",
                 })
 
+        # -----------------------------------
+        # 2) AST Analyzer (security + bugs)
+        # -----------------------------------
         if language.lower() in ["python", "py", "auto"]:
             results.extend(analyze_python_ast(code))
+
+            # -----------------------------------
+            # 3) Structure Analyzer (nesting, size)
+            # -----------------------------------
             results.extend(analyze_structure(code))
+
+            # -----------------------------------
+            # 4) Complexity Engine (cyclomatic, params)
+            # -----------------------------------
             results.extend(analyze_complexity(code))
 
+            # -----------------------------------
+            # 5) CFG Engine (Phase C.1)
+            # -----------------------------------
+            results.extend(analyze_cfg(code))
+
+        # -----------------------------------
+        # 6) Clean Code Fallback
+        # -----------------------------------
         if not results:
             results.append({
                 "rule_id": "CLEAN_CODE",
