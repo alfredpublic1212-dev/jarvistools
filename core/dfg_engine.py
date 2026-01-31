@@ -1,10 +1,11 @@
 # core/dfg_engine.py
+
 import ast
 import builtins
 from typing import List, Dict, Set
 
 
-BUILTIN_NAMES = set(dir(builtins))
+BUILTINS = set(dir(builtins))
 
 
 def _issue(
@@ -27,15 +28,14 @@ class DFGVisitor(ast.NodeVisitor):
     def __init__(self):
         self.issues: List[Dict] = []
 
-        # Stack of scopes (each scope is a set of variable names)
+        # stack of scopes (global → function → nested)
         self.scope_stack: List[Set[str]] = []
 
-        # Initialize GLOBAL scope
+        # global scope
         self.scope_stack.append(set())
 
-        # Track locals per function
-        self.local_assigned: Set[str] = set()
-        self.local_used: Set[str] = set()
+        # track variables used before assignment
+        self.used_before_assign: Set[str] = set()
 
     # -----------------------------
     # Scope helpers
@@ -55,22 +55,24 @@ class DFGVisitor(ast.NodeVisitor):
     def visit_FunctionDef(self, node: ast.FunctionDef):
         self.enter_scope()
 
-        # Reset per-function tracking
-        self.local_assigned = set()
-        self.local_used = set()
+        local_assigned: Set[str] = set()
+        local_used: Set[str] = set()
 
-        # Parameters are assigned
+        # parameters are assigned
         for arg in node.args.args:
-            self.local_assigned.add(arg.arg)
+            local_assigned.add(arg.arg)
             self.current_scope().add(arg.arg)
 
-        # Walk function body
+        # walk body manually
         for stmt in node.body:
             self.visit(stmt)
 
-        # Unused local variables
-        for var in self.local_assigned:
-            if var not in self.local_used:
+        # unused variables (LOCAL ONLY)
+        for var in local_assigned:
+            if (
+                var not in local_used
+                and var not in self.used_before_assign
+            ):
                 self.issues.append(
                     _issue(
                         "DFG_UNUSED_VARIABLE",
@@ -90,7 +92,7 @@ class DFGVisitor(ast.NodeVisitor):
         for target in node.targets:
             if isinstance(target, ast.Name):
 
-                # Shadowing: exists in any outer scope
+                # shadowing: exists in outer scope
                 for scope in self.scope_stack[:-1]:
                     if target.id in scope:
                         self.issues.append(
@@ -103,7 +105,6 @@ class DFGVisitor(ast.NodeVisitor):
                             )
                         )
 
-                self.local_assigned.add(target.id)
                 self.current_scope().add(target.id)
 
         self.generic_visit(node)
@@ -114,17 +115,13 @@ class DFGVisitor(ast.NodeVisitor):
     def visit_Name(self, node: ast.Name):
         if isinstance(node.ctx, ast.Load):
 
-            # Ignore builtins (print, len, range, etc.)
-            if node.id in BUILTIN_NAMES:
+            # ignore builtins (print, len, range, etc.)
+            if node.id in BUILTINS:
                 return
 
-            # Used locally
-            if node.id in self.local_assigned:
-                self.local_used.add(node.id)
-                return
-
-            # Use-before-assign: not found in any scope
+            # check assignment across all scopes
             if not any(node.id in scope for scope in self.scope_stack):
+                self.used_before_assign.add(node.id)
                 self.issues.append(
                     _issue(
                         "DFG_USE_BEFORE_ASSIGN",
