@@ -1,5 +1,9 @@
 import ast
+import builtins
 from typing import List, Dict, Set
+
+
+BUILTINS = set(dir(builtins))
 
 
 def _issue(
@@ -21,9 +25,13 @@ def _issue(
 class DFGVisitor(ast.NodeVisitor):
     def __init__(self):
         self.issues: List[Dict] = []
+
+        # scope stack: each entry is variables declared in that scope
+        self.scope_stack: List[Set[str]] = []
+
+        # function-local tracking
         self.assigned: Set[str] = set()
         self.used: Set[str] = set()
-        self.scope_stack: List[Set[str]] = []
 
     # -----------------------------
     # Scope handling
@@ -41,16 +49,20 @@ class DFGVisitor(ast.NodeVisitor):
     # Function boundary
     # -----------------------------
     def visit_FunctionDef(self, node: ast.FunctionDef):
+        # reset per-function state
+        self.assigned = set()
+        self.used = set()
+
         self.enter_scope()
 
-        # parameters are considered assigned
+        # parameters are assigned
         for arg in node.args.args:
             self.assigned.add(arg.arg)
             self.current_scope().add(arg.arg)
 
         self.generic_visit(node)
 
-        # post-function analysis
+        # unused variables (function-local only)
         for var in self.assigned:
             if var not in self.used:
                 self.issues.append(
@@ -71,7 +83,7 @@ class DFGVisitor(ast.NodeVisitor):
     def visit_Assign(self, node: ast.Assign):
         for target in node.targets:
             if isinstance(target, ast.Name):
-                # shadowing check
+                # shadowing: exists in outer scope
                 for scope in self.scope_stack[:-1]:
                     if target.id in scope:
                         self.issues.append(
@@ -94,7 +106,12 @@ class DFGVisitor(ast.NodeVisitor):
     # -----------------------------
     def visit_Name(self, node: ast.Name):
         if isinstance(node.ctx, ast.Load):
+            # ignore builtins
+            if node.id in BUILTINS:
+                return
+
             self.used.add(node.id)
+
             if node.id not in self.assigned:
                 self.issues.append(
                     _issue(
@@ -105,6 +122,7 @@ class DFGVisitor(ast.NodeVisitor):
                         "high",
                     )
                 )
+
         self.generic_visit(node)
 
 
