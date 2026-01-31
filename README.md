@@ -500,7 +500,7 @@ Health check:
 `GET /health`
 
 Service start command:  
-`uvicorn services.jarvis_service:app --host 0.0.0.0 --port 3333`
+(https://jarvis-sandbox.onrender.com/health)
 
 **10.2 Deployment Diagram**
 
