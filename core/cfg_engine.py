@@ -1,3 +1,5 @@
+# core/cfg_engine.py
+
 import ast
 from typing import List, Dict
 
@@ -19,26 +21,25 @@ def _issue(
 
 
 class CFGVisitor(ast.NodeVisitor):
+    """
+    Phase C.1 — Minimal CFG Engine
+
+    Guarantees:
+    - No false positives
+    - Block-aware only
+    - No path explosion
+    """
+
     def __init__(self):
         self.issues: List[Dict] = []
 
     # -----------------------------
-    # Function-level CFG analysis
+    # Function-level CFG
     # -----------------------------
     def visit_FunctionDef(self, node: ast.FunctionDef):
-        """
-        Phase C.1 (Minimal CFG)
-
-        Rules:
-        - Dead code after return
-        - Dead code after raise
-        - DO NOT enforce "all paths return"
-          (matches your expected behavior)
-        """
-
         for idx, stmt in enumerate(node.body):
 
-            # Dead after return
+            # Dead code after return
             if isinstance(stmt, ast.Return) and idx + 1 < len(node.body):
                 self.issues.append(
                     _issue(
@@ -50,7 +51,7 @@ class CFGVisitor(ast.NodeVisitor):
                     )
                 )
 
-            # Dead after raise
+            # Dead code after raise
             if isinstance(stmt, ast.Raise) and idx + 1 < len(node.body):
                 self.issues.append(
                     _issue(
@@ -68,7 +69,7 @@ class CFGVisitor(ast.NodeVisitor):
     # Branch-level CFG
     # -----------------------------
     def visit_If(self, node: ast.If):
-        # Constant-false branch
+        # Constant false branch
         if isinstance(node.test, ast.Constant) and node.test.value is False:
             self.issues.append(
                 _issue(
@@ -79,6 +80,7 @@ class CFGVisitor(ast.NodeVisitor):
                     "medium",
                 )
             )
+
         self.generic_visit(node)
 
     # -----------------------------
@@ -101,29 +103,8 @@ class CFGVisitor(ast.NodeVisitor):
                         "high",
                     )
                 )
+
         self.generic_visit(node)
-
-    def visit_Break(self, node: ast.Break):
-        self.issues.append(
-            _issue(
-                "CFG_DEAD_AFTER_BREAK",
-                "warning",
-                "logic",
-                "Statements after break in loop are unreachable.",
-                "medium",
-            )
-        )
-
-    def visit_Continue(self, node: ast.Continue):
-        self.issues.append(
-            _issue(
-                "CFG_DEAD_AFTER_CONTINUE",
-                "warning",
-                "logic",
-                "Statements after continue in loop are unreachable.",
-                "medium",
-            )
-        )
 
 
 def analyze_cfg(code: str) -> List[Dict]:
