@@ -501,6 +501,7 @@ Health check:
 
 Service start command:  
 (https://jarvis-sandbox.onrender.com/health)
+https://jarvis-sandbox.onrender.com/review_code(POSTMAN)
 
 **10.2 Deployment Diagram**
 
