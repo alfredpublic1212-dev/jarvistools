@@ -29,6 +29,7 @@ class ReviewRequest(BaseModel):
 
 
 class ReviewItem(BaseModel):
+    rule_id: str 
     severity: str
     category: str
     message: str
