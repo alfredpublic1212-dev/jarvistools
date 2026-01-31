@@ -23,50 +23,103 @@ class CFGVisitor(ast.NodeVisitor):
     def __init__(self):
         self.issues: List[Dict] = []
 
+    # -----------------------------
+    # Function-level CFG analysis
+    # -----------------------------
     def visit_FunctionDef(self, node: ast.FunctionDef):
-        returns = []
-        unreachable_found = False
+        has_return_path = False
 
         for idx, stmt in enumerate(node.body):
             if isinstance(stmt, ast.Return):
-                returns.append(stmt)
-                if idx < len(node.body) - 1:
-                    unreachable_found = True
+                has_return_path = True
+                if idx + 1 < len(node.body):
+                    self.issues.append(
+                        _issue(
+                            "CFG_DEAD_AFTER_RETURN",
+                            "warning",
+                            "logic",
+                            f"Code after return statement in function '{node.name}' is unreachable.",
+                        )
+                    )
 
-        # Dead code after return
-        if unreachable_found:
+            if isinstance(stmt, ast.Raise):
+                if idx + 1 < len(node.body):
+                    self.issues.append(
+                        _issue(
+                            "CFG_DEAD_AFTER_RAISE",
+                            "warning",
+                            "logic",
+                            f"Code after raise statement in function '{node.name}' is unreachable.",
+                        )
+                    )
+
+        if not has_return_path:
             self.issues.append(
                 _issue(
-                    "CFG_DEAD_AFTER_RETURN",
+                    "CFG_NOT_ALL_PATHS_RETURN",
                     "warning",
                     "logic",
-                    f"Code after return statement in function '{node.name}' is unreachable.",
-                )
-            )
-
-        # Multiple returns
-        if len(returns) > 1:
-            self.issues.append(
-                _issue(
-                    "CFG_MULTIPLE_RETURNS",
-                    "info",
-                    "design",
-                    f"Function '{node.name}' has multiple return paths ({len(returns)}).",
-                )
-            )
-
-        # No guaranteed exit
-        if not returns:
-            self.issues.append(
-                _issue(
-                    "CFG_NO_GUARANTEED_EXIT",
-                    "warning",
-                    "logic",
-                    f"Function '{node.name}' has no guaranteed return statement.",
+                    f"Function '{node.name}' does not return a value on all paths.",
                 )
             )
 
         self.generic_visit(node)
+
+    # -----------------------------
+    # Branch-level CFG
+    # -----------------------------
+    def visit_If(self, node: ast.If):
+        if isinstance(node.test, ast.Constant) and node.test.value is False:
+            self.issues.append(
+                _issue(
+                    "CFG_DEAD_BRANCH_LITERAL",
+                    "warning",
+                    "logic",
+                    "Branch guarded by constant False is unreachable.",
+                )
+            )
+        self.generic_visit(node)
+
+    # -----------------------------
+    # Loop-level CFG
+    # -----------------------------
+    def visit_While(self, node: ast.While):
+        if isinstance(node.test, ast.Constant) and node.test.value is True:
+            has_exit = any(
+                isinstance(n, (ast.Break, ast.Return, ast.Raise))
+                for n in ast.walk(node)
+            )
+            if not has_exit:
+                self.issues.append(
+                    _issue(
+                        "CFG_INFINITE_LOOP_CONFIRMED",
+                        "warning",
+                        "logic",
+                        "Control-flow confirms infinite loop with no exit path.",
+                        "high",
+                    )
+                )
+        self.generic_visit(node)
+
+    def visit_Break(self, node: ast.Break):
+        self.issues.append(
+            _issue(
+                "CFG_DEAD_AFTER_BREAK",
+                "warning",
+                "logic",
+                "Statements after break in loop are unreachable.",
+            )
+        )
+
+    def visit_Continue(self, node: ast.Continue):
+        self.issues.append(
+            _issue(
+                "CFG_DEAD_AFTER_CONTINUE",
+                "warning",
+                "logic",
+                "Statements after continue in loop are unreachable.",
+            )
+        )
 
 
 def analyze_cfg(code: str) -> List[Dict]:
