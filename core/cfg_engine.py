@@ -1,4 +1,3 @@
-# core/cfg_engine.py
 import ast
 from typing import List, Dict
 
@@ -27,41 +26,41 @@ class CFGVisitor(ast.NodeVisitor):
     # Function-level CFG analysis
     # -----------------------------
     def visit_FunctionDef(self, node: ast.FunctionDef):
-        has_return_path = False
+        """
+        Phase C.1 (Minimal CFG)
+
+        Rules:
+        - Dead code after return
+        - Dead code after raise
+        - DO NOT enforce "all paths return"
+          (matches your expected behavior)
+        """
 
         for idx, stmt in enumerate(node.body):
-            if isinstance(stmt, ast.Return):
-                has_return_path = True
-                if idx + 1 < len(node.body):
-                    self.issues.append(
-                        _issue(
-                            "CFG_DEAD_AFTER_RETURN",
-                            "warning",
-                            "logic",
-                            f"Code after return statement in function '{node.name}' is unreachable.",
-                        )
-                    )
 
-            if isinstance(stmt, ast.Raise):
-                if idx + 1 < len(node.body):
-                    self.issues.append(
-                        _issue(
-                            "CFG_DEAD_AFTER_RAISE",
-                            "warning",
-                            "logic",
-                            f"Code after raise statement in function '{node.name}' is unreachable.",
-                        )
+            # Dead after return
+            if isinstance(stmt, ast.Return) and idx + 1 < len(node.body):
+                self.issues.append(
+                    _issue(
+                        "CFG_DEAD_AFTER_RETURN",
+                        "warning",
+                        "logic",
+                        f"Code after return statement in function '{node.name}' is unreachable.",
+                        "medium",
                     )
-
-        if not has_return_path:
-            self.issues.append(
-                _issue(
-                    "CFG_NOT_ALL_PATHS_RETURN",
-                    "warning",
-                    "logic",
-                    f"Function '{node.name}' does not return a value on all paths.",
                 )
-            )
+
+            # Dead after raise
+            if isinstance(stmt, ast.Raise) and idx + 1 < len(node.body):
+                self.issues.append(
+                    _issue(
+                        "CFG_DEAD_AFTER_RAISE",
+                        "warning",
+                        "logic",
+                        f"Code after raise statement in function '{node.name}' is unreachable.",
+                        "medium",
+                    )
+                )
 
         self.generic_visit(node)
 
@@ -69,6 +68,7 @@ class CFGVisitor(ast.NodeVisitor):
     # Branch-level CFG
     # -----------------------------
     def visit_If(self, node: ast.If):
+        # Constant-false branch
         if isinstance(node.test, ast.Constant) and node.test.value is False:
             self.issues.append(
                 _issue(
@@ -76,6 +76,7 @@ class CFGVisitor(ast.NodeVisitor):
                     "warning",
                     "logic",
                     "Branch guarded by constant False is unreachable.",
+                    "medium",
                 )
             )
         self.generic_visit(node)
@@ -84,6 +85,7 @@ class CFGVisitor(ast.NodeVisitor):
     # Loop-level CFG
     # -----------------------------
     def visit_While(self, node: ast.While):
+        # Confirmed infinite loop
         if isinstance(node.test, ast.Constant) and node.test.value is True:
             has_exit = any(
                 isinstance(n, (ast.Break, ast.Return, ast.Raise))
@@ -108,6 +110,7 @@ class CFGVisitor(ast.NodeVisitor):
                 "warning",
                 "logic",
                 "Statements after break in loop are unreachable.",
+                "medium",
             )
         )
 
@@ -118,6 +121,7 @@ class CFGVisitor(ast.NodeVisitor):
                 "warning",
                 "logic",
                 "Statements after continue in loop are unreachable.",
+                "medium",
             )
         )
 
