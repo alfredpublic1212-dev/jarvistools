@@ -9,6 +9,7 @@ from core.cfg_engine import analyze_cfg
 from core.dfg_engine import analyze_dfg
 from core.taint_engine import analyze_taint
 from core.architecture_engine import analyze_architecture
+from core.resource_engine import analyze_resources
 
 
 # -----------------------------------
@@ -56,7 +57,8 @@ class ReviewBrain:
             results.extend(analyze_cfg(code))
             results.extend(analyze_dfg(code))
             results.extend(analyze_taint(code))
-            results.extend(analyze_architecture(code))
+            results.extend(analyze_resources(code))      # ✅ C.4 HERE
+            results.extend(analyze_architecture(code))  # ✅ D.x HERE
 
         # -----------------------------------
         # 3) OPTION B CLEANUP (SUPPRESSION)
