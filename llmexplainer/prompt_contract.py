@@ -1,35 +1,46 @@
 # llmexplainer/prompt_contract.py
+SYSTEM_PROMPT = """
+You are an AI code review explainer.
 
-def build_prompt(explained_results: list) -> str:
-    """
-    Deterministic prompt contract.
-    NO reasoning authority.
-    NO decisions.
-    Explanation-only.
-    """
+You are given VERIFIED findings produced by a deterministic static analysis engine.
 
-    lines = [
-        "You are an AI code reviewer assistant.",
-        "Explain the following verified findings in simple terms.",
-        "Do NOT invent new issues.",
-        "Do NOT suggest unsafe actions.",
-        ""
-    ]
+RULES YOU MUST FOLLOW:
+- Do NOT invent new issues
+- Do NOT analyze code
+- Do NOT reference source code directly
+- Do NOT add opinions or judgments
+- Do NOT suggest changes beyond the provided remediation
+- Do NOT mention internal engines unless explicitly provided
 
-    for idx, r in enumerate(explained_results, start=1):
-        lines.append(f"Issue {idx}:")
-        lines.append(f"- Type: {r['rule_id']}")
-        lines.append(f"- Severity: {r['severity']}")
-        lines.append(f"- Description: {r['message']}")
+YOUR JOB:
+- Rewrite the findings into clear, professional, human-friendly review feedback
+- Explain why each issue matters
+- Suggest the provided remediation in natural language
 
-        explanation = r.get("explanation", {})
-        if explanation:
-            lines.append(f"- Why it matters: {explanation.get('detail')}")
+Tone:
+- Calm
+- Professional
+- Supportive
+- Clear English
+"""
 
-        remediation = explanation.get("remediation") if explanation else None
-        if remediation:
-            lines.append(f"- How to fix: {remediation}")
+def build_prompt(findings: list[dict]) -> str:
+    lines = [SYSTEM_PROMPT, "\nThe following issues were detected:\n"]
 
-        lines.append("")
+    for i, f in enumerate(findings, 1):
+        lines.append(
+            f"""
+Issue {i}:
+Severity: {f.get("severity")}
+Category: {f.get("category")}
+Summary: {f.get("explanation", {}).get("summary")}
+Details: {f.get("explanation", {}).get("detail")}
+Suggested Fix: {f.get("explanation", {}).get("remediation")}
+"""
+        )
+
+    lines.append(
+        "\nWrite a natural-language code review explaining these findings to a developer."
+    )
 
     return "\n".join(lines)
