@@ -26,7 +26,7 @@ class DFGVisitor(ast.NodeVisitor):
     def __init__(self):
         self.issues: List[Dict] = []
 
-        # scope stack: global -> function -> nested
+        # scope stack: global → function → nested
         self.scope_stack: List[Set[str]] = [set()]
 
         # function-local tracking
@@ -44,6 +44,21 @@ class DFGVisitor(ast.NodeVisitor):
 
     def current_scope(self) -> Set[str]:
         return self.scope_stack[-1]
+
+    # -----------------------------
+    # IMPORTS CREATE BINDINGS (FIX)
+    # -----------------------------
+    def visit_Import(self, node: ast.Import):
+        for alias in node.names:
+            name = alias.asname or alias.name.split(".")[0]
+            self.scope_stack[0].add(name)  # module scope
+        self.generic_visit(node)
+
+    def visit_ImportFrom(self, node: ast.ImportFrom):
+        for alias in node.names:
+            name = alias.asname or alias.name
+            self.scope_stack[0].add(name)  # module scope
+        self.generic_visit(node)
 
     # -----------------------------
     # Function boundary
