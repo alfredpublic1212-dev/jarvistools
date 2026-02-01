@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 from services.review_brain import ReviewBrain
-
+from core.explain_engine import explain_results
 
 
 app = FastAPI(title="Jarvis Code Review Service")
@@ -29,7 +29,7 @@ class ReviewRequest(BaseModel):
 
 
 class ReviewItem(BaseModel):
-    rule_id: str 
+    rule_id: str
     severity: str
     category: str
     message: str
@@ -39,6 +39,15 @@ class ReviewItem(BaseModel):
 class ReviewResponse(BaseModel):
     success: bool
     results: List[ReviewItem]
+
+
+class ExplainRequest(BaseModel):
+    results: List[ReviewItem]
+
+
+class ExplainResponse(BaseModel):
+    success: bool
+    results: List[dict]
 
 
 # =========================
@@ -57,4 +66,18 @@ def review_code(req: ReviewRequest):
     return {
         "success": True,
         "results": results,
+    }
+
+
+# =========================
+# Phase E.1 — Explain Endpoint
+# =========================
+
+@app.post("/explain", response_model=ExplainResponse)
+def explain(req: ExplainRequest):
+    explained = explain_results([r.dict() for r in req.results])
+
+    return {
+        "success": True,
+        "results": explained,
     }
