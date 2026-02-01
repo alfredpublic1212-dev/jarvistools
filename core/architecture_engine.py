@@ -61,11 +61,23 @@ class ArchitectureVisitor(ast.NodeVisitor):
     # Module boundary
     # -----------------------------
     def visit_Module(self, node: ast.Module):
-        # Attempt to infer module name (best-effort)
         self.module_name = "__main__"
         self.generic_visit(node)
 
-        # Circular self-import
+        # UNUSED IMPORTS (D.1)
+        for name in self.imports:
+            if name not in self.used_names:
+                self.issues.append(
+                    _issue(
+                        "ARCH_UNUSED_IMPORT",
+                        "warning",
+                        "architecture",
+                        f"Imported module '{name}' is never used.",
+                        "medium",
+                    )
+                )
+
+        # SELF-IMPORT (D.2)
         if self.module_name in self.imports:
             self.issues.append(
                 _issue(
