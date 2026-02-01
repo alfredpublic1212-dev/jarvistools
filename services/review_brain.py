@@ -33,7 +33,7 @@ class ReviewBrain:
         results: List[Dict] = []
 
         # -----------------------------------
-        # 1) Regex Prefilter (non-AST only)
+        # 1) Regex Prefilter
         # -----------------------------------
         lowered = code.lower()
         for pattern, message in DANGEROUS_PATTERNS:
@@ -47,46 +47,39 @@ class ReviewBrain:
                 })
 
         # -----------------------------------
-        # 2) AST Analyzer (security + bugs)
+        # 2) Static Analyzers
         # -----------------------------------
         if language.lower() in ["python", "py", "auto"]:
             results.extend(analyze_python_ast(code))
-
-            # -----------------------------------
-            # 3) Structure Analyzer (nesting, size)
-            # -----------------------------------
             results.extend(analyze_structure(code))
-
-            # -----------------------------------
-            # 4) Complexity Engine (cyclomatic, params)
-            # -----------------------------------
             results.extend(analyze_complexity(code))
-
-            # -----------------------------------
-            # 5) CFG Engine (Phase C.1)
-            # -----------------------------------
             results.extend(analyze_cfg(code))
-
-            # -----------------------------------
-            # 5.5) DFG Engine (Phase C.2)
-            # -----------------------------------
             results.extend(analyze_dfg(code))
-
-            # -----------------------------------
-            # 7) Taint Engine (Phase C.3)
-            # -----------------------------------
             results.extend(analyze_taint(code))
-
-            # -----------------------------------
-            # 8) Architecture Engine (Phase D.2)
-            # -----------------------------------
             results.extend(analyze_architecture(code))
 
+        # -----------------------------------
+        # 3) OPTION B CLEANUP (SUPPRESSION)
+        # -----------------------------------
+        used_before_assign_vars = {
+            r["message"].split("'")[1]
+            for r in results
+            if r["rule_id"] == "DFG_USE_BEFORE_ASSIGN"
+        }
 
+        cleaned: List[Dict] = []
+        for r in results:
+            if (
+                r["rule_id"] == "DFG_UNUSED_VARIABLE"
+                and r["message"].split("'")[1] in used_before_assign_vars
+            ):
+                continue
+            cleaned.append(r)
 
+        results = cleaned
 
         # -----------------------------------
-        #  Clean Code Fallback
+        # 4) Clean Code Fallback
         # -----------------------------------
         if not results:
             results.append({
@@ -98,4 +91,3 @@ class ReviewBrain:
             })
 
         return results
-       
