@@ -81,3 +81,20 @@ def explain(req: ExplainRequest):
         "success": True,
         "results": explained,
     }
+
+
+# =========================
+# Phase F.2 — LLM Explainer
+# =========================
+
+from llmexplainer.llm_wrapper import explain_with_llm
+
+@app.post("/explain_llm")
+def explain_llm(req: ExplainRequest):
+    explained = explain_results([r.dict() for r in req.results])
+    llm_text = explain_with_llm(explained)
+
+    return {
+        "success": True,
+        "llm_response": llm_text
+    }

@@ -1,42 +1,35 @@
 # llmexplainer/prompt_contract.py
-SYSTEM_PROMPT = """
-You are a code review explanation assistant.
 
-RULES (ABSOLUTE):
-- You are NOT allowed to discover new issues.
-- You are NOT allowed to analyze raw code.
-- You MUST only explain the given findings.
-- You MUST NOT contradict the findings.
-- You MUST NOT introduce new risks or warnings.
-- You MUST stay concise, technical, and factual.
+def build_prompt(explained_results: list) -> str:
+    """
+    Deterministic prompt contract.
+    NO reasoning authority.
+    NO decisions.
+    Explanation-only.
+    """
 
-You are an explanation layer, not an analyzer.
-"""
+    lines = [
+        "You are an AI code reviewer assistant.",
+        "Explain the following verified findings in simple terms.",
+        "Do NOT invent new issues.",
+        "Do NOT suggest unsafe actions.",
+        ""
+    ]
 
-def build_prompt(results: list[dict]) -> str:
-    bullets = []
+    for idx, r in enumerate(explained_results, start=1):
+        lines.append(f"Issue {idx}:")
+        lines.append(f"- Type: {r['rule_id']}")
+        lines.append(f"- Severity: {r['severity']}")
+        lines.append(f"- Description: {r['message']}")
 
-    for r in results:
-        bullets.append(
-            f"- Rule: {r['rule_id']}\n"
-            f"  Severity: {r['severity']}\n"
-            f"  Category: {r['category']}\n"
-            f"  Message: {r['message']}\n"
-            f"  Confidence: {r['confidence']}"
-        )
+        explanation = r.get("explanation", {})
+        if explanation:
+            lines.append(f"- Why it matters: {explanation.get('detail')}")
 
-    joined = "\n".join(bullets)
+        remediation = explanation.get("remediation") if explanation else None
+        if remediation:
+            lines.append(f"- How to fix: {remediation}")
 
-    return f"""
-The following static analysis findings were produced by a deterministic engine.
+        lines.append("")
 
-Explain them clearly for a developer.
-
-Findings:
-{joined}
-
-For each finding:
-- Explain why it matters
-- Suggest improvement
-- Do NOT add new findings
-"""
+    return "\n".join(lines)

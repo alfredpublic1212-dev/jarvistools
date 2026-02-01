@@ -1,18 +1,18 @@
 # llmexplainer/llm_guard.py
-FORBIDDEN_PHRASES = [
-    "new issue",
-    "additional problem",
-    "another vulnerability",
-    "i found",
-    "this code",
-    "you should also check",
-]
 
-def guard_llm_output(text: str) -> str:
-    lowered = text.lower()
+def guard_llm_input(explained_results: list):
+    """
+    Enforces F.1 invariants:
+    - No raw code
+    - No execution hints
+    - Only structured findings
+    """
 
-    for phrase in FORBIDDEN_PHRASES:
-        if phrase in lowered:
-            raise ValueError("LLM output violated sandbox constraints.")
+    if not isinstance(explained_results, list):
+        raise ValueError("Invalid LLM input format")
 
-    return text
+    for r in explained_results:
+        if "code" in r or "source" in r:
+            raise ValueError("Raw code is not allowed in LLM input")
+
+    return True
