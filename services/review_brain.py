@@ -8,6 +8,7 @@ from core.complexity_engine import analyze_complexity
 from core.cfg_engine import analyze_cfg
 from core.dfg_engine import analyze_dfg
 from core.taint_engine import analyze_taint
+from core.architecture_engine import analyze_architecture
 
 
 # -----------------------------------
@@ -76,9 +77,16 @@ class ReviewBrain:
             # -----------------------------------
             results.extend(analyze_taint(code))
 
-        
+            # -----------------------------------
+            # 8) Architecture Engine (Phase D.1)
+            # -----------------------------------
+            results.extend(analyze_architecture(code))
+
+
+
+
         # -----------------------------------
-        # 6) Clean Code Fallback
+        #  Clean Code Fallback
         # -----------------------------------
         if not results:
             results.append({
@@ -90,3 +98,4 @@ class ReviewBrain:
             })
 
         return results
+       
