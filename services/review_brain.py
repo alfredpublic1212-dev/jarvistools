@@ -7,6 +7,7 @@ from core.structure_analyzer import analyze_structure
 from core.complexity_engine import analyze_complexity
 from core.cfg_engine import analyze_cfg
 from core.dfg_engine import analyze_dfg
+from core.taint_engine import analyze_taint
 
 
 # -----------------------------------
@@ -66,11 +67,16 @@ class ReviewBrain:
             results.extend(analyze_cfg(code))
 
             # -----------------------------------
-            # 6) DFG Engine (Phase C.2)
+            # 5.5) DFG Engine (Phase C.2)
             # -----------------------------------
             results.extend(analyze_dfg(code))
 
+            # -----------------------------------
+            # 7) Taint Engine (Phase C.3)
+            # -----------------------------------
+            results.extend(analyze_taint(code))
 
+        
         # -----------------------------------
         # 6) Clean Code Fallback
         # -----------------------------------
