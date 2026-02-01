@@ -1,22 +1,30 @@
-# llmexplainer/llm_wrapper.py
 import os
 import requests
 from .prompt_contract import build_prompt
 
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
-MODEL_NAME = os.getenv("LLM_MODEL", "llama3")
+API_KEY = os.getenv("LLM_API_KEY")
+API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 def explain_with_llm(findings: list[dict]) -> str:
     prompt = build_prompt(findings)
 
-    payload = {
-        "model": MODEL_NAME,
-        "prompt": prompt,
-        "stream": False
-    }
+    response = requests.post(
+        API_URL,
+        headers={
+            "Authorization": f"Bearer {API_KEY}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": "llama3-70b-8192",
+            "messages": [
+                {"role": "system", "content": "You are a code review explainer."},
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": 0.4,
+        },
+        timeout=30,
+    )
 
-    response = requests.post(OLLAMA_URL, json=payload, timeout=60)
     response.raise_for_status()
-
     data = response.json()
-    return data.get("response", "").strip()
+    return data["choices"][0]["message"]["content"].strip()
