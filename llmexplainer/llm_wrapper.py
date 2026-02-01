@@ -20,7 +20,7 @@ def explain_with_llm(findings: list[dict]) -> str:
         },
         json={
             # SAFE MODEL WORKS ON FREE GROQ
-            "model": "llama3-8b-8192",
+            "model": "llama-3.1-8b-instant",
             "messages": [
                 {
                     "role": "system",
