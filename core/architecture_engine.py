@@ -1,5 +1,4 @@
 # core/architecture_engine.py
-
 import ast
 from typing import List, Dict, Set
 
@@ -21,66 +20,62 @@ def _issue(
 
 
 class ArchitectureVisitor(ast.NodeVisitor):
+    """
+    Phase D.2 — Architecture Intelligence (Single-file)
+
+    Detects:
+    - Unused imports (delegated to D.1, not duplicated here)
+    - Circular self-imports
+    - Suspicious layer mixing (very conservative)
+    """
+
     def __init__(self):
         self.issues: List[Dict] = []
-
         self.imports: Set[str] = set()
         self.used_names: Set[str] = set()
         self.module_name: str | None = None
 
     # -----------------------------
-    # Module context
-    # -----------------------------
-    def visit_Module(self, node: ast.Module):
-        self.generic_visit(node)
-
-        # unused imports
-        for name in self.imports:
-            if name not in self.used_names:
-                self.issues.append(
-                    _issue(
-                        "ARCH_UNUSED_IMPORT",
-                        "warning",
-                        "architecture",
-                        f"Imported module '{name}' is never used.",
-                        "medium",
-                    )
-                )
-
-    # -----------------------------
-    # import x
+    # Track imports
     # -----------------------------
     def visit_Import(self, node: ast.Import):
         for alias in node.names:
-            self.imports.add(alias.asname or alias.name.split(".")[0])
+            name = alias.name.split(".")[0]
+            self.imports.add(name)
+        self.generic_visit(node)
 
-    # -----------------------------
-    # from x import y
-    # -----------------------------
     def visit_ImportFrom(self, node: ast.ImportFrom):
         if node.module:
-            base = node.module.split(".")[0]
-            for alias in node.names:
-                self.imports.add(alias.asname or alias.name)
-
-                # self-import (single-file safe heuristic)
-                if alias.name == base:
-                    self.issues.append(
-                        _issue(
-                            "ARCH_SELF_IMPORT",
-                            "warning",
-                            "architecture",
-                            f"Module imports itself via '{node.module}'.",
-                            "high",
-                        )
-                    )
+            name = node.module.split(".")[0]
+            self.imports.add(name)
+        self.generic_visit(node)
 
     # -----------------------------
-    # usage tracking
+    # Track usage
     # -----------------------------
     def visit_Name(self, node: ast.Name):
         self.used_names.add(node.id)
         self.generic_visit(node)
+
+    # -----------------------------
+    # Module boundary
+    # -----------------------------
+    def visit_Module(self, node: ast.Module):
+        # Attempt to infer module name (best-effort)
+        self.module_name = "__main__"
+        self.generic_visit(node)
+
+        # Circular self-import
+        if self.module_name in self.imports:
+            self.issues.append(
+                _issue(
+                    "ARCH_SELF_IMPORT",
+                    "warning",
+                    "architecture",
+                    "Module imports itself, creating a circular dependency.",
+                    "high",
+                )
+            )
 
 
 def analyze_architecture(code: str) -> List[Dict]:

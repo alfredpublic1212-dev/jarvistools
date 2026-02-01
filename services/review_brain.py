@@ -78,7 +78,7 @@ class ReviewBrain:
             results.extend(analyze_taint(code))
 
             # -----------------------------------
-            # 8) Architecture Engine (Phase D.1)
+            # 8) Architecture Engine (Phase D.2)
             # -----------------------------------
             results.extend(analyze_architecture(code))
 
