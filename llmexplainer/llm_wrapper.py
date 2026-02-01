@@ -6,6 +6,10 @@ API_KEY = os.getenv("LLM_API_KEY")
 API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 def explain_with_llm(findings: list[dict]) -> str:
+    # Hard fail early if key missing (prevents silent crashes)
+    if not API_KEY:
+        return "LLM API key is not configured."
+
     prompt = build_prompt(findings)
 
     response = requests.post(
@@ -15,16 +19,35 @@ def explain_with_llm(findings: list[dict]) -> str:
             "Content-Type": "application/json",
         },
         json={
-            "model": "llama3-70b-8192",
+            # SAFE MODEL WORKS ON FREE GROQ
+            "model": "llama3-8b-8192",
             "messages": [
-                {"role": "system", "content": "You are a code review explainer."},
-                {"role": "user", "content": prompt},
+                {
+                    "role": "system",
+                    "content": "You are a professional AI code review explainer."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
             ],
             "temperature": 0.4,
         },
         timeout=30,
     )
 
-    response.raise_for_status()
+    # If Groq itself errors (403 / 429 / 5xx)
+    try:
+        response.raise_for_status()
+    except requests.HTTPError:
+        return "The AI explainer is temporarily unavailable."
+
     data = response.json()
-    return data["choices"][0]["message"]["content"].strip()
+
+    # ABSOLUTE SAFETY GUARD (NO MORE 500s)
+    choices = data.get("choices")
+    if not choices or not isinstance(choices, list):
+        return "The AI explainer could not generate a response."
+
+    message = choices[0].get("message", {})
+    return message.get("content", "").strip()

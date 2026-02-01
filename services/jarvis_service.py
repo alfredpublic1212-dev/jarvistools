@@ -91,7 +91,7 @@ from llmexplainer.llm_wrapper import explain_with_llm
 
 @app.post("/explain_llm")
 def explain_llm(req: ExplainRequest):
-    explained = explain_results([r.dict() for r in req.results])
+    explained = explain_results([r.model_dump() for r in req.results])
     llm_text = explain_with_llm(explained)
 
     return {
