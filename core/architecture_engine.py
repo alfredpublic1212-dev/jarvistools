@@ -27,10 +27,8 @@ class ArchitectureVisitor(ast.NodeVisitor):
     - Self-imports
 
     D.3:
-    - Too many imports
-    - Excessive public API
-    - God module
-    - Mixed concerns (IO + logic)
+    - God module (aggregated)
+    - Mixed concerns
     """
 
     def __init__(self):
@@ -40,11 +38,10 @@ class ArchitectureVisitor(ast.NodeVisitor):
         self.imports: Set[str] = set()
         self.used_names: Set[str] = set()
 
-        # D.3 counters
+        # D.3 metrics
         self.import_count = 0
         self.func_count = 0
         self.class_count = 0
-        self.top_level_stmt_count = 0
 
         self.has_io = False
         self.has_logic = False
@@ -72,7 +69,7 @@ class ArchitectureVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     # -----------------------------
-    # Structural counts
+    # Structure / logic
     # -----------------------------
     def visit_FunctionDef(self, node: ast.FunctionDef):
         self.func_count += 1
@@ -96,7 +93,6 @@ class ArchitectureVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call):
-        # IO / system detection
         if isinstance(node.func, ast.Name) and node.func.id == "open":
             self.has_io = True
 
@@ -108,10 +104,9 @@ class ArchitectureVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     # -----------------------------
-    # Module boundary
+    # Module boundary (D.2 + D.3)
     # -----------------------------
     def visit_Module(self, node: ast.Module):
-        self.top_level_stmt_count = len(node.body)
         self.generic_visit(node)
 
         # ---- D.2: Unused imports
@@ -126,53 +121,25 @@ class ArchitectureVisitor(ast.NodeVisitor):
                     )
                 )
 
-        # ---- D.3: Too many imports
-        if self.import_count > 20:
-            self.issues.append(
-                _issue(
-                    "ARCH_TOO_MANY_IMPORTS",
-                    "warning",
-                    "architecture",
-                    f"Module has {self.import_count} imports, indicating high dependency weight.",
-                )
-            )
+        # ---- D.3 aggregation
+        top_level_defs = self.func_count + self.class_count
+        mixed_concerns = self.has_io and self.has_logic
 
-        # ---- D.3: Excessive public API
-        public_api = self.func_count + self.class_count
-        if public_api > 20:
-            self.issues.append(
-                _issue(
-                    "ARCH_EXCESSIVE_PUBLIC_API",
-                    "warning",
-                    "architecture",
-                    f"Module exposes {public_api} public definitions.",
-                )
-            )
+        signals = 0
+        if self.import_count >= 12:
+            signals += 1
+        if top_level_defs >= 8:
+            signals += 1
+        if mixed_concerns:
+            signals += 1
 
-        # ---- D.3: God module
-        if (
-            self.import_count > 20
-            or self.func_count > 15
-            or self.class_count > 5
-            or self.top_level_stmt_count > 50
-        ):
+        if signals >= 2:
             self.issues.append(
                 _issue(
                     "ARCH_GOD_MODULE",
                     "warning",
                     "architecture",
                     "Module appears to be doing too much and may lack clear separation of concerns.",
-                )
-            )
-
-        # ---- D.3: Mixed concerns
-        if self.has_io and self.has_logic:
-            self.issues.append(
-                _issue(
-                    "ARCH_MIXED_CONCERNS",
-                    "warning",
-                    "architecture",
-                    "Module mixes IO/system operations with business logic.",
                 )
             )
 
