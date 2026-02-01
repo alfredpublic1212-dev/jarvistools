@@ -12,8 +12,11 @@ def _issue(
     category: str,
     message: str,
     confidence: str = "medium",
+    *,
+    node: ast.AST | None = None,
+    source_lines: list[str] | None = None,
 ) -> Dict:
-    return {
+    issue = {
         "rule_id": rule_id,
         "severity": severity,
         "category": category,
@@ -21,9 +24,23 @@ def _issue(
         "confidence": confidence,
     }
 
+    # -----------------------------
+    # Location metadata (BEST-EFFORT)
+    # -----------------------------
+    if node is not None and hasattr(node, "lineno"):
+        issue["location"] = {
+            "line": node.lineno,
+            "column": getattr(node, "col_offset", None),
+        }
+
+        if source_lines and 1 <= node.lineno <= len(source_lines):
+            issue["code_snippet"] = source_lines[node.lineno - 1].rstrip()
+
+    return issue
+
 
 class DFGVisitor(ast.NodeVisitor):
-    def __init__(self):
+    def __init__(self, source_lines: list[str]):
         self.issues: List[Dict] = []
 
         # scope stack: global → function → nested
@@ -32,6 +49,8 @@ class DFGVisitor(ast.NodeVisitor):
         # function-local tracking
         self.local_assigned: Set[str] = set()
         self.local_used: Set[str] = set()
+
+        self.source_lines = source_lines
 
     # -----------------------------
     # Scope helpers
@@ -46,18 +65,18 @@ class DFGVisitor(ast.NodeVisitor):
         return self.scope_stack[-1]
 
     # -----------------------------
-    # IMPORTS CREATE BINDINGS (FIX)
+    # IMPORTS CREATE BINDINGS
     # -----------------------------
     def visit_Import(self, node: ast.Import):
         for alias in node.names:
             name = alias.asname or alias.name.split(".")[0]
-            self.scope_stack[0].add(name)  # module scope
+            self.scope_stack[0].add(name)
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom):
         for alias in node.names:
             name = alias.asname or alias.name
-            self.scope_stack[0].add(name)  # module scope
+            self.scope_stack[0].add(name)
         self.generic_visit(node)
 
     # -----------------------------
@@ -74,11 +93,10 @@ class DFGVisitor(ast.NodeVisitor):
             self.local_assigned.add(arg.arg)
             self.current_scope().add(arg.arg)
 
-        # walk body
         for stmt in node.body:
             self.visit(stmt)
 
-        # unused locals ONLY
+        # unused locals
         for var in self.local_assigned:
             if var not in self.local_used:
                 self.issues.append(
@@ -88,6 +106,8 @@ class DFGVisitor(ast.NodeVisitor):
                         "maintainability",
                         f"Variable '{var}' is assigned but never used.",
                         "medium",
+                        node=node,
+                        source_lines=self.source_lines,
                     )
                 )
 
@@ -99,8 +119,6 @@ class DFGVisitor(ast.NodeVisitor):
     def visit_Assign(self, node: ast.Assign):
         for target in node.targets:
             if isinstance(target, ast.Name):
-
-                # shadowing
                 for scope in self.scope_stack[:-1]:
                     if target.id in scope:
                         self.issues.append(
@@ -110,6 +128,8 @@ class DFGVisitor(ast.NodeVisitor):
                                 "design",
                                 f"Variable '{target.id}' shadows a variable from an outer scope.",
                                 "medium",
+                                node=target,
+                                source_lines=self.source_lines,
                             )
                         )
 
@@ -123,12 +143,9 @@ class DFGVisitor(ast.NodeVisitor):
     # -----------------------------
     def visit_Name(self, node: ast.Name):
         if isinstance(node.ctx, ast.Load):
-
-            # ignore builtins
             if node.id in BUILTINS:
                 return
 
-            # used before assign
             if not any(node.id in scope for scope in self.scope_stack):
                 self.issues.append(
                     _issue(
@@ -137,6 +154,8 @@ class DFGVisitor(ast.NodeVisitor):
                         "logic",
                         f"Variable '{node.id}' is used before assignment.",
                         "high",
+                        node=node,
+                        source_lines=self.source_lines,
                     )
                 )
             else:
@@ -151,6 +170,7 @@ def analyze_dfg(code: str) -> List[Dict]:
     except SyntaxError:
         return []
 
-    visitor = DFGVisitor()
+    source_lines = code.splitlines()
+    visitor = DFGVisitor(source_lines)
     visitor.visit(tree)
     return visitor.issues
