@@ -1,10 +1,18 @@
-# core/taint_engine.py
 import ast
 import builtins
 from typing import List, Dict, Set
 
-
 BUILTINS = set(dir(builtins))
+
+TAINT_SOURCES = {
+    "input",
+}
+
+TAINT_SINKS = {
+    "eval",
+    "exec",
+    "os.system",
+}
 
 
 def _issue(
@@ -23,31 +31,29 @@ def _issue(
     }
 
 
-# -----------------------------
-# Configuration (STRICT)
-# -----------------------------
-
-TAINT_SOURCES = {
-    "input",
-}
-
-TAINT_SINK_CALLS = {
-    "eval",
-    "exec",
-}
-
-TAINT_SINK_ATTRS = {
-    ("os", "system"),
-    ("subprocess", None),  # any subprocess.*
-}
-
-
 class TaintVisitor(ast.NodeVisitor):
+    """
+    Phase C.3 — Minimal, Correct Taint Tracking
+
+    Implements:
+    - Taint creation
+    - Taint propagation
+    - Taint sink detection
+
+    Explicitly NOT:
+    - Interprocedural
+    - Multi-file
+    - Framework-specific
+    """
+
     def __init__(self):
         self.issues: List[Dict] = []
 
-        # stack of tainted variables per scope
+        # stack of scopes: global → function → nested
         self.scope_stack: List[Set[str]] = [set()]
+
+        # tainted variables
+        self.tainted: Set[str] = set()
 
     # -----------------------------
     # Scope helpers
@@ -58,11 +64,19 @@ class TaintVisitor(ast.NodeVisitor):
     def exit_scope(self):
         self.scope_stack.pop()
 
-    def is_tainted(self, name: str) -> bool:
-        return any(name in scope for scope in self.scope_stack)
+    def current_scope(self) -> Set[str]:
+        return self.scope_stack[-1]
 
-    def taint(self, name: str):
-        self.scope_stack[-1].add(name)
+    # -----------------------------
+    # Imports are safe assignments
+    # -----------------------------
+    def visit_Import(self, node: ast.Import):
+        for alias in node.names:
+            self.current_scope().add(alias.asname or alias.name)
+
+    def visit_ImportFrom(self, node: ast.ImportFrom):
+        for alias in node.names:
+            self.current_scope().add(alias.asname or alias.name)
 
     # -----------------------------
     # Function boundary
@@ -70,17 +84,9 @@ class TaintVisitor(ast.NodeVisitor):
     def visit_FunctionDef(self, node: ast.FunctionDef):
         self.enter_scope()
 
-        # parameters are TAINT SOURCES
+        # parameters are NOT tainted by default
         for arg in node.args.args:
-            self.taint(arg.arg)
-            self.issues.append(
-                _issue(
-                    "TAINT_SOURCE",
-                    "warning",
-                    "security",
-                    f"Function parameter '{arg.arg}' is a taint source.",
-                )
-            )
+            self.current_scope().add(arg.arg)
 
         for stmt in node.body:
             self.visit(stmt)
@@ -88,110 +94,101 @@ class TaintVisitor(ast.NodeVisitor):
         self.exit_scope()
 
     # -----------------------------
-    # Assignments (propagation)
+    # Assignments
     # -----------------------------
     def visit_Assign(self, node: ast.Assign):
-        value_tainted = self.expr_is_tainted(node.value)
+        value_is_source = self.is_direct_source(node.value)
+        value_is_tainted = self.expr_is_tainted(node.value)
 
         for target in node.targets:
-            if isinstance(target, ast.Name) and value_tainted:
-                self.taint(target.id)
-                self.issues.append(
-                    _issue(
-                        "TAINT_PROPAGATION",
-                        "warning",
-                        "security",
-                        f"Taint propagated to variable '{target.id}'.",
-                    )
-                )
+            if isinstance(target, ast.Name):
+                self.current_scope().add(target.id)
 
-        self.generic_visit(node)
-
-    # -----------------------------
-    # Calls (sources & sinks)
-    # -----------------------------
-    def visit_Call(self, node: ast.Call):
-        # ---- source: input()
-        if isinstance(node.func, ast.Name) and node.func.id in TAINT_SOURCES:
-            parent = getattr(node, "parent", None)
-            if isinstance(parent, ast.Assign):
-                for target in parent.targets:
-                    if isinstance(target, ast.Name):
-                        self.taint(target.id)
-                        self.issues.append(
-                            _issue(
-                                "TAINT_SOURCE",
-                                "warning",
-                                "security",
-                                f"Variable '{target.id}' receives tainted input.",
-                            )
-                        )
-
-        # ---- sink: eval / exec
-        if isinstance(node.func, ast.Name) and node.func.id in TAINT_SINK_CALLS:
-            for arg in node.args:
-                if self.expr_is_tainted(arg):
+                # Direct source assignment
+                if value_is_source:
+                    self.tainted.add(target.id)
                     self.issues.append(
                         _issue(
-                            "TAINT_SINK_REACHED",
-                            "error",
+                            "TAINT_SOURCE",
+                            "warning",
                             "security",
-                            f"Tainted data passed to dangerous sink '{node.func.id}()'.",
+                            f"Variable '{target.id}' receives tainted input.",
                         )
                     )
 
-        # ---- sink: os.system / subprocess.*
-        if isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name):
-            base = node.func.value.id
-            attr = node.func.attr
-
-            for sink_base, sink_attr in TAINT_SINK_ATTRS:
-                if base == sink_base and (sink_attr is None or sink_attr == attr):
-                    for arg in node.args:
-                        if self.expr_is_tainted(arg):
-                            self.issues.append(
-                                _issue(
-                                    "TAINT_SINK_REACHED",
-                                    "error",
-                                    "security",
-                                    f"Tainted data passed to dangerous sink '{base}.{attr}'.",
-                                )
-                            )
+                # Propagation ONLY if coming from another tainted variable
+                elif value_is_tainted:
+                    self.tainted.add(target.id)
+                    self.issues.append(
+                        _issue(
+                            "TAINT_PROPAGATION",
+                            "warning",
+                            "security",
+                            f"Taint propagated to variable '{target.id}'.",
+                        )
+                    )
 
         self.generic_visit(node)
 
     # -----------------------------
-    # Expression taint check
+    # Sink detection
     # -----------------------------
+    def visit_Call(self, node: ast.Call):
+        sink_name = self.get_sink_name(node)
+
+        if sink_name and any(self.expr_is_tainted(arg) for arg in node.args):
+            self.issues.append(
+                _issue(
+                    "TAINT_SINK_REACHED",
+                    "error",
+                    "security",
+                    f"Tainted data passed to dangerous sink '{sink_name}'.",
+                )
+            )
+
+        self.generic_visit(node)
+
+    # -----------------------------
+    # Helpers
+    # -----------------------------
+    def is_direct_source(self, node: ast.AST) -> bool:
+        return (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id in TAINT_SOURCES
+        )
+
     def expr_is_tainted(self, node: ast.AST) -> bool:
         if isinstance(node, ast.Name):
-            return self.is_tainted(node.id)
+            return node.id in self.tainted
 
         if isinstance(node, ast.BinOp):
             return self.expr_is_tainted(node.left) or self.expr_is_tainted(node.right)
 
         if isinstance(node, ast.Call):
-            if isinstance(node.func, ast.Name) and node.func.id in TAINT_SOURCES:
-                return True
-
             return any(self.expr_is_tainted(arg) for arg in node.args)
 
         return False
 
+    def get_sink_name(self, node: ast.Call) -> str | None:
+        if isinstance(node.func, ast.Name) and node.func.id in TAINT_SINKS:
+            return node.func.id
 
-# -----------------------------
-# Public API
-# -----------------------------
+        if isinstance(node.func, ast.Attribute):
+            if (
+                isinstance(node.func.value, ast.Name)
+                and f"{node.func.value.id}.{node.func.attr}" in TAINT_SINKS
+            ):
+                return f"{node.func.value.id}.{node.func.attr}"
+
+        return None
+
+
 def analyze_taint(code: str) -> List[Dict]:
     try:
         tree = ast.parse(code)
     except SyntaxError:
         return []
-
-    # attach parents (needed for source detection)
-    for node in ast.walk(tree):
-        for child in ast.iter_child_nodes(node):
-            child.parent = node
 
     visitor = TaintVisitor()
     visitor.visit(tree)
