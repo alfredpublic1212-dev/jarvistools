@@ -1,3 +1,5 @@
+# services/review_brain.py
+
 from typing import List, Dict
 
 from core.ast_analyzer import analyze_python_ast
@@ -11,6 +13,10 @@ from core.resource_engine import analyze_resources
 from core.fix_registry import FIX_HANDLERS
 from core.scope_mapper import map_scopes, resolve_scope
 
+
+# -----------------------------------
+# Regex prefilter (ONLY destructive literals)
+# -----------------------------------
 
 DANGEROUS_PATTERNS = [
     ("rm -rf", "This command deletes files recursively and is extremely dangerous."),

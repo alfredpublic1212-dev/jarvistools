@@ -25,7 +25,9 @@ class ReviewRequest(BaseModel):
     code: str
     scope: str
     range: Optional[dict] = None
-
+    
+ # G.5 policy config
+    policy: Optional[dict] = None
 
 
 # Health
