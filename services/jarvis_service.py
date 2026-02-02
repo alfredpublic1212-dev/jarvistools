@@ -2,31 +2,31 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
+from fastapi.responses import JSONResponse
 
 from services.review_brain import ReviewBrain
 from core.explain_engine import explain_results
+from core.policy_engine import evaluate_policy
 from llmexplainer.llm_wrapper import explain_with_llm
 from core.sarif_exporter import to_sarif
-from fastapi.responses import JSONResponse
+
 
 
 # App init
-
 app = FastAPI(title="Jarvis Sandbox Reasoning Service")
 brain = ReviewBrain()
 
 
 
 # Request schema
-
 class ReviewRequest(BaseModel):
     file: str
     language: str
     code: str
     scope: str
     range: Optional[dict] = None
-    
- # G.5 policy config
+
+    # G.5 policy config (optional)
     policy: Optional[dict] = None
 
 
@@ -40,16 +40,21 @@ def health():
     }
 
 
-# G.1 — Unified DevSync Review Endpoint
+
+# G.1–G.6 — Unified Review Endpoint
+
 @app.post("/review")
 def review(req: ReviewRequest):
     """
-    Single-call, DevSync-ready review endpoint.
+    Single-call, DevSync + CI-ready review endpoint.
+
     Includes:
     - Deterministic analysis
     - Deterministic explanations
-    - Deterministic auto-fixes (G.2)
+    - Auto-fixes (G.2)
     - Scope grouping (G.3)
+    - Policy evaluation (G.5)
+    - CI exit behavior (G.6)
     - Optional LLM presentation (F.x)
     """
 
@@ -59,19 +64,29 @@ def review(req: ReviewRequest):
     # 2) Deterministic explanation layer
     explained_issues = explain_results(raw_issues)
 
-    # 3) Summary block
+    # 3) Policy evaluation (G.5)
+    policy_cfg = req.policy or {}
+    warning_threshold = policy_cfg.get("warning_threshold", 5)
+
+    policy_result = evaluate_policy(
+        explained_issues,
+        warning_threshold=warning_threshold
+    )
+
+    # 4) Summary block
     summary = {
         "issue_count": len(explained_issues),
-        "error_count": sum(1 for i in explained_issues if i["severity"] == "error"),
-        "warning_count": sum(1 for i in explained_issues if i["severity"] == "warning"),
+        "error_count": policy_result["error_count"],
+        "warning_count": policy_result["warning_count"],
         "highest_severity": (
             "error"
-            if any(i["severity"] == "error" for i in explained_issues)
-            else "warning" if explained_issues else "none"
+            if policy_result["error_count"] > 0
+            else "warning" if policy_result["warning_count"] > 0
+            else "none"
         ),
     }
 
-    # 4) Optional LLM presentation layer (non-blocking)
+    # 5) Optional LLM presentation (non-blocking)
     try:
         llm_text = explain_with_llm(explained_issues)
         llm_block = {
@@ -84,14 +99,14 @@ def review(req: ReviewRequest):
             "content": None
         }
 
-    # 5) Final unified response
-    return {
+    response = {
         "success": True,
         "summary": summary,
         "issues": explained_issues,
+        "policy": policy_result,
         "llm_explanation": llm_block,
         "metadata": {
-            "schema_version": "1.0",
+            "schema_version": "1.2",
             "engine_version": "sandbox-1.0",
             "analysis_scope": "single-file",
             "llm_used": llm_block["present"],
@@ -99,15 +114,20 @@ def review(req: ReviewRequest):
         }
     }
 
+    # 6) G.6 — CI exit via HTTP status
+    status_code = 200 if policy_result["status"] == "pass" else 422
+    return JSONResponse(content=response, status_code=status_code)
 
 
-# G.4 — CI / SARIF Export Endpoint
+
+# G.4 — SARIF Export (CI / GitHub Code Scanning)
 
 @app.post("/review/sarif")
 def review_sarif(req: ReviewRequest):
     """
-    CI / GitHub Code Scanning compatible SARIF export.
+    SARIF export for CI systems.
     Deterministic only.
+    No policy gating.
     No LLM involvement.
     """
 

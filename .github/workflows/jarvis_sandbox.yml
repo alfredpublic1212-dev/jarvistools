@@ -1,0 +1,67 @@
+name: Jarvis Sandbox CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  jarvis-review:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run Jarvis Sandbox Policy Check
+        run: |
+          python - << 'EOF'
+          import requests
+          import json
+          import sys
+          from pathlib import Path
+
+          # Read a target file (example: first python file found)
+          py_files = list(Path(".").rglob("*.py"))
+          if not py_files:
+              print("No Python files found. Skipping.")
+              sys.exit(0)
+
+          code = py_files[0].read_text()
+
+          payload = {
+              "file": str(py_files[0]),
+              "language": "python",
+              "code": code,
+              "scope": "ci",
+              "policy": {
+                  "warning_threshold": 5
+              }
+          }
+
+          response = requests.post(
+              "http://localhost:8000/review",
+              json=payload,
+              timeout=30
+          )
+
+          data = response.json()
+
+          policy = data.get("policy")
+          if policy and policy["status"] == "fail":
+              print(" Jarvis Sandbox policy failed:")
+              print(json.dumps(policy, indent=2))
+              sys.exit(1)
+
+          print("Jarvis Sandbox policy passed")
+          EOF
