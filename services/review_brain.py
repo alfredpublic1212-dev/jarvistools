@@ -10,11 +10,11 @@ from core.dfg_engine import analyze_dfg
 from core.taint_engine import analyze_taint
 from core.architecture_engine import analyze_architecture
 from core.resource_engine import analyze_resources
+from core.fix_registry import FIX_HANDLERS
 
 
-# -----------------------------------
+
 # Regex prefilter (ONLY destructive literals)
-# -----------------------------------
 
 DANGEROUS_PATTERNS = [
     ("rm -rf", "This command deletes files recursively and is extremely dangerous."),
@@ -33,9 +33,8 @@ class ReviewBrain:
 
         results: List[Dict] = []
 
-        # -----------------------------------
+        
         # 1) Regex Prefilter
-        # -----------------------------------
         lowered = code.lower()
         for pattern, message in DANGEROUS_PATTERNS:
             if pattern in lowered:
@@ -47,9 +46,8 @@ class ReviewBrain:
                     "confidence": "high",
                 })
 
-        # -----------------------------------
+    
         # 2) Static Analyzers
-        # -----------------------------------
         if language.lower() in ["python", "py", "auto"]:
             results.extend(analyze_python_ast(code))
             results.extend(analyze_structure(code))
@@ -57,12 +55,11 @@ class ReviewBrain:
             results.extend(analyze_cfg(code))
             results.extend(analyze_dfg(code))
             results.extend(analyze_taint(code))
-            results.extend(analyze_resources(code))      # ✅ C.4 HERE
-            results.extend(analyze_architecture(code))  # ✅ D.x HERE
+            results.extend(analyze_resources(code))
+            results.extend(analyze_architecture(code))
 
-        # -----------------------------------
-        # 3) OPTION B CLEANUP (SUPPRESSION)
-        # -----------------------------------
+       
+        # 3) Cleanup / Suppression
         used_before_assign_vars = {
             r["message"].split("'")[1]
             for r in results
@@ -80,9 +77,23 @@ class ReviewBrain:
 
         results = cleaned
 
-        # -----------------------------------
-        # 4) Clean Code Fallback
-        # -----------------------------------
+
+        # 4) Attach deterministic auto-fixes (G.2)
+        for issue in results:
+            handler = FIX_HANDLERS.get(issue["rule_id"])
+            if not handler:
+                continue
+
+            try:
+                fix = handler(issue, code)
+            except Exception:
+                fix = None
+
+            if fix:
+                issue["fix"] = fix
+
+        
+        # 5) Clean Code Fallback
         if not results:
             results.append({
                 "rule_id": "CLEAN_CODE",
