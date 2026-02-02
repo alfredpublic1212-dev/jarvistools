@@ -1,5 +1,3 @@
-# services/review_brain.py
-
 from typing import List, Dict
 
 from core.ast_analyzer import analyze_python_ast
@@ -11,10 +9,8 @@ from core.taint_engine import analyze_taint
 from core.architecture_engine import analyze_architecture
 from core.resource_engine import analyze_resources
 from core.fix_registry import FIX_HANDLERS
+from core.scope_mapper import map_scopes, resolve_scope
 
-
-
-# Regex prefilter (ONLY destructive literals)
 
 DANGEROUS_PATTERNS = [
     ("rm -rf", "This command deletes files recursively and is extremely dangerous."),
@@ -33,8 +29,9 @@ class ReviewBrain:
 
         results: List[Dict] = []
 
-        
-        # 1) Regex Prefilter
+        # --------------------------------------------------
+        # 1) Regex prefilter
+        # --------------------------------------------------
         lowered = code.lower()
         for pattern, message in DANGEROUS_PATTERNS:
             if pattern in lowered:
@@ -46,8 +43,9 @@ class ReviewBrain:
                     "confidence": "high",
                 })
 
-    
-        # 2) Static Analyzers
+        # --------------------------------------------------
+        # 2) Static analyzers
+        # --------------------------------------------------
         if language.lower() in ["python", "py", "auto"]:
             results.extend(analyze_python_ast(code))
             results.extend(analyze_structure(code))
@@ -58,8 +56,9 @@ class ReviewBrain:
             results.extend(analyze_resources(code))
             results.extend(analyze_architecture(code))
 
-       
-        # 3) Cleanup / Suppression
+        # --------------------------------------------------
+        # 3) Cleanup / suppression
+        # --------------------------------------------------
         used_before_assign_vars = {
             r["message"].split("'")[1]
             for r in results
@@ -77,8 +76,9 @@ class ReviewBrain:
 
         results = cleaned
 
-
-        # 4) Attach deterministic auto-fixes (G.2)
+        # --------------------------------------------------
+        # 4) Deterministic auto-fixes (G.2)
+        # --------------------------------------------------
         for issue in results:
             handler = FIX_HANDLERS.get(issue["rule_id"])
             if not handler:
@@ -92,8 +92,22 @@ class ReviewBrain:
             if fix:
                 issue["fix"] = fix
 
-        
-        # 5) Clean Code Fallback
+        # --------------------------------------------------
+        # 5) G.3 — Scope mapping
+        # --------------------------------------------------
+        scopes = map_scopes(code)
+
+        for issue in results:
+            loc = issue.get("location")
+            if not loc:
+                issue["scope"] = {"class": None, "function": None}
+                continue
+
+            issue["scope"] = resolve_scope(loc["line"], scopes)
+
+        # --------------------------------------------------
+        # 6) Clean-code fallback
+        # --------------------------------------------------
         if not results:
             results.append({
                 "rule_id": "CLEAN_CODE",
@@ -101,6 +115,7 @@ class ReviewBrain:
                 "category": "style",
                 "message": "No critical issues detected by static analyzers.",
                 "confidence": "low",
+                "scope": {"class": None, "function": None},
             })
 
         return results
