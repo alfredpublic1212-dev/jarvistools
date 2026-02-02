@@ -1,4 +1,4 @@
-name: Jarvis Sandbox CI
+name: Jarvis Sandbox CI Policy Check
 
 on:
   push:
@@ -7,77 +7,68 @@ on:
     branches: [ main ]
 
 jobs:
-  jarvis-review:
+  jarvis-policy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️ Checkout code
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️ Python setup
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # 3️ Install dependencies
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
 
-      # 4️ Start Jarvis Sandbox (LOCAL to CI machine)
-      - name: Start Jarvis Sandbox
-        run: |
-          uvicorn services.jarvis_service:app --host 0.0.0.0 --port 8000 &
-          echo "Waiting for Jarvis Sandbox to start..."
-          for i in {1..20}; do
-            if curl -s http://localhost:8000/health > /dev/null; then
-              echo "Jarvis Sandbox is ready!"
-              break
-            fi
-            sleep 1
-          done
-
-      # 5️Run policy enforcement
-      - name: Run Jarvis Sandbox Policy Check
+      - name: Run Jarvis Sandbox Policy Check (User Code Only)
         run: |
           python - << 'EOF'
-          import requests
-          import json
           import sys
           from pathlib import Path
+          from services.review_brain import ReviewBrain
+          from core.explain_engine import explain_results
+          from core.policy_engine import evaluate_policy
 
-          py_files = list(Path(".").rglob("*.py"))
-          if not py_files:
-              print("No Python files found. Skipping.")
+          brain = ReviewBrain()
+
+          # IMPORTANT: scan ONLY user code
+          target_dir = Path("examples")
+
+          if not target_dir.exists():
+              print("No examples/ directory found. Skipping.")
               sys.exit(0)
 
-          code = py_files[0].read_text()
+          py_files = list(target_dir.rglob("*.py"))
+          if not py_files:
+              print("No Python files found in examples/. Skipping.")
+              sys.exit(0)
 
-          payload = {
-              "file": str(py_files[0]),
-              "language": "python",
-              "code": code,
-              "scope": "ci",
-              "policy": {
-                  "warning_threshold": 5
-              }
-          }
+          all_issues = []
 
-          response = requests.post(
-              "http://localhost:8000/review",
-              json=payload,
-              timeout=30
+          for file in py_files:
+              code = file.read_text()
+              issues = brain.review_code({
+                  "file": str(file),
+                  "language": "python",
+                  "code": code,
+                  "scope": "ci",
+              })
+              explained = explain_results(issues)
+              all_issues.extend(explained)
+
+          policy = evaluate_policy(
+              all_issues,
+              warning_threshold=5
           )
 
-          data = response.json()
+          print("Policy result:")
+          print(policy)
 
-          policy = data.get("policy")
-          if policy and policy["status"] == "fail":
-              print("Jarvis Sandbox policy failed:")
-              print(json.dumps(policy, indent=2))
+          if policy["status"] == "fail":
               sys.exit(1)
 
-          print("Jarvis Sandbox policy passed")
+          print("Jarvis Sandbox policy passed.")
           EOF
