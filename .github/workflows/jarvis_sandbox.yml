@@ -11,18 +11,35 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1️ Checkout code
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 2️ Python setup
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
+      # 3️ Install dependencies
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
 
+      # 4️ Start Jarvis Sandbox (LOCAL to CI machine)
+      - name: Start Jarvis Sandbox
+        run: |
+          uvicorn services.jarvis_service:app --host 0.0.0.0 --port 8000 &
+          echo "Waiting for Jarvis Sandbox to start..."
+          for i in {1..20}; do
+            if curl -s http://localhost:8000/health > /dev/null; then
+              echo "Jarvis Sandbox is ready!"
+              break
+            fi
+            sleep 1
+          done
+
+      # 5️Run policy enforcement
       - name: Run Jarvis Sandbox Policy Check
         run: |
           python - << 'EOF'
@@ -31,7 +48,6 @@ jobs:
           import sys
           from pathlib import Path
 
-          # Read a target file (example: first python file found)
           py_files = list(Path(".").rglob("*.py"))
           if not py_files:
               print("No Python files found. Skipping.")
@@ -59,7 +75,7 @@ jobs:
 
           policy = data.get("policy")
           if policy and policy["status"] == "fail":
-              print(" Jarvis Sandbox policy failed:")
+              print("Jarvis Sandbox policy failed:")
               print(json.dumps(policy, indent=2))
               sys.exit(1)
 
