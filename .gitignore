@@ -5,3 +5,10 @@ __pycache__/
 .env
 .venv
 venv/
+
+# 🔐 PRIVATE KEYS (never push)
+keys/private.pem
+private.pem
+
+# allow public key
+!keys/public.pem
