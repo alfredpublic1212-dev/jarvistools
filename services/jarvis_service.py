@@ -75,12 +75,17 @@ def review(req: ReviewRequest):
     # 2) Deterministic explanation layer
     explained_issues = explain_results(raw_issues)
 
-    # 3) Policy evaluation (G.5)
+    # 3) H1 — Versioned Policy Evaluation (Enterprise Mode)
     policy_cfg = req.policy or {}
+
+    policy_version = policy_cfg.get("version", "v1")
+    profile = policy_cfg.get("profile", "balanced")
     warning_threshold = policy_cfg.get("warning_threshold", 5)
 
     policy_result = evaluate_policy(
         explained_issues,
+        policy_version=policy_version,
+        profile=profile,
         warning_threshold=warning_threshold
     )
 

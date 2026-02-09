@@ -1,111 +1,127 @@
-# core/policy_engine.py
-from typing import List, Dict, Optional
+from typing import List, Dict
 
 
-# ============================================================
-# H.1 — VERSIONED POLICY ENGINE (ENTERPRISE FOUNDATION)
-# ============================================================
-# Goals:
-# - Deterministic
-# - Versioned policies
-# - Backward compatible with G.5
-# - Company-ready
-# - CI-safe
-# ============================================================
-
-
-DEFAULT_POLICY_VERSION = "v1"
+SUPPORTED_POLICY_VERSIONS = ["v1"]
+SUPPORTED_PROFILES = ["balanced", "strict", "permissive"]
 
 
 def evaluate_policy(
     issues: List[Dict],
     *,
-    warning_threshold: int = 5,
-    policy_version: Optional[str] = None,
+    policy_version: str = "v1",
+    profile: str = "balanced",
+    warning_threshold: int = 5
 ) -> Dict:
     """
-    H.1 — Versioned Policy Evaluation
+    H1 — Versioned Policy Engine
 
-    Default policy (v1):
-    - Any error => FAIL
-    - warnings > threshold => FAIL
-    - else PASS
-
-    Backward compatible with G.5.
+    Supports:
+    - versioned policies
+    - profiles
+    - configurable thresholds
     """
 
-    version = policy_version or DEFAULT_POLICY_VERSION
+    # ------------------------------
+    # Validate version
+    # ------------------------------
+    if policy_version not in SUPPORTED_POLICY_VERSIONS:
+        return {
+            "status": "fail",
+            "reason": "unsupported_policy_version",
+            "policy_version": policy_version,
+        }
 
-    # --------------------------------------------------------
-    # Count severities
-    # --------------------------------------------------------
-    error_count = sum(1 for i in issues if i.get("severity") == "error")
-    warning_count = sum(1 for i in issues if i.get("severity") == "warning")
+    if profile not in SUPPORTED_PROFILES:
+        return {
+            "status": "fail",
+            "reason": "unsupported_policy_profile",
+            "policy_version": policy_version,
+            "profile": profile,
+        }
 
-    # --------------------------------------------------------
-    # POLICY VERSION: v1 (Balanced)
-    # --------------------------------------------------------
-    if version == "v1":
+    # ------------------------------
+    # Count issues
+    # ------------------------------
+    error_count = sum(1 for i in issues if i["severity"] == "error")
+    warning_count = sum(1 for i in issues if i["severity"] == "warning")
 
+    # ------------------------------
+    # PROFILE: STRICT
+    # ------------------------------
+    if profile == "strict":
+        if error_count > 0 or warning_count > 0:
+            return {
+                "status": "fail",
+                "reason": "strict_policy_violation",
+                "policy_version": policy_version,
+                "profile": profile,
+                "error_count": error_count,
+                "warning_count": warning_count,
+            }
+
+        return {
+            "status": "pass",
+            "reason": "strict_clean",
+            "policy_version": policy_version,
+            "profile": profile,
+            "error_count": error_count,
+            "warning_count": warning_count,
+        }
+
+    # ------------------------------
+    # PROFILE: PERMISSIVE
+    # ------------------------------
+    if profile == "permissive":
         if error_count > 0:
-            return _build_result(
-                status="fail",
-                reason="errors_present",
-                version=version,
-                error_count=error_count,
-                warning_count=warning_count,
-                threshold=warning_threshold,
-            )
+            return {
+                "status": "fail",
+                "reason": "errors_present",
+                "policy_version": policy_version,
+                "profile": profile,
+                "error_count": error_count,
+                "warning_count": warning_count,
+            }
 
-        if warning_count > warning_threshold:
-            return _build_result(
-                status="fail",
-                reason="warning_threshold_exceeded",
-                version=version,
-                error_count=error_count,
-                warning_count=warning_count,
-                threshold=warning_threshold,
-            )
+        return {
+            "status": "pass",
+            "reason": "permissive_pass",
+            "policy_version": policy_version,
+            "profile": profile,
+            "error_count": error_count,
+            "warning_count": warning_count,
+        }
 
-        return _build_result(
-            status="pass",
-            reason="within_policy_limits",
-            version=version,
-            error_count=error_count,
-            warning_count=warning_count,
-            threshold=warning_threshold,
-        )
+    # ------------------------------
+    # PROFILE: BALANCED (default)
+    # ------------------------------
+    if error_count > 0:
+        return {
+            "status": "fail",
+            "reason": "errors_present",
+            "policy_version": policy_version,
+            "profile": profile,
+            "error_count": error_count,
+            "warning_count": warning_count,
+            "threshold": warning_threshold,
+        }
 
-    # --------------------------------------------------------
-    # Unknown policy version (future-proofing)
-    # --------------------------------------------------------
-    return _build_result(
-        status="pass",
-        reason="unknown_policy_version_default_pass",
-        version=version,
-        error_count=error_count,
-        warning_count=warning_count,
-        threshold=warning_threshold,
-    )
+    if warning_count > warning_threshold:
+        return {
+            "status": "fail",
+            "reason": "warning_threshold_exceeded",
+            "policy_version": policy_version,
+            "profile": profile,
+            "error_count": error_count,
+            "warning_count": warning_count,
+            "threshold": warning_threshold,
+        }
 
-
-# ============================================================
-# INTERNAL: result builder (consistent structure)
-# ============================================================
-def _build_result(
-    *,
-    status: str,
-    reason: str,
-    version: str,
-    error_count: int,
-    warning_count: int,
-    threshold: int,
-) -> Dict:
     return {
-        "status": status,
-        "reason": reason,
-        "policy_version": version,
+        "status": "pass",
+        "reason": "within_policy_limits",
+        "policy_version": policy_version,
+        "profile": profile,
         "error_count": error_count,
         "warning_count": warning_count,
-        "threshold": threshold,
+        "threshold": warning_threshold,
     }
