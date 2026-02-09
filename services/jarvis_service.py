@@ -9,8 +9,7 @@ from core.explain_engine import explain_results
 from core.policy_engine import evaluate_policy
 from llmexplainer.llm_wrapper import explain_with_llm
 from core.sarif_exporter import to_sarif
-
-
+from core.org_policy_loader import load_org_policy
 
 
 # App init
@@ -18,21 +17,21 @@ app = FastAPI(title="Jarvis Sandbox Reasoning Service")
 brain = ReviewBrain()
 
 
-
-# Request Schema (PUBLIC API CONTRACT)
+# =========================
+# Request Schema (PUBLIC CONTRACT)
+# =========================
 class ReviewRequest(BaseModel):
     file: str
     language: str
     code: str
-    scope: str = "file"          # DEFAULT FIX (NO MORE 422)
+    scope: str = "file"  # default avoids 422 forever
     range: Optional[dict] = None
-
-    # G.5 — policy config (optional)
     policy: Optional[dict] = None
 
 
-
+# =========================
 # Health
+# =========================
 @app.get("/health")
 def health():
     return {
@@ -41,47 +40,45 @@ def health():
     }
 
 
-
-# G.1 — Schema Discovery Endpoint
-
+# =========================
+# Schema discovery endpoint
+# =========================
 @app.get("/review/schema")
 def review_schema():
-    """
-    Returns the canonical request schema for /review.
-    Used by DevSync, CI tools, SDKs, and integrators.
-    """
     return ReviewRequest.model_json_schema()
 
 
-# G.1–G.6 — Unified Review Endpoint (PRODUCT CORE)
+# =========================
+# MAIN PRODUCT ENDPOINT
+# =========================
 @app.post("/review")
 def review(req: ReviewRequest):
-    """
-    Single-call, product-grade review endpoint.
 
-    Includes:
-    - Deterministic analysis
-    - Deterministic explanations
-    - Auto-fixes (G.2)
-    - Scope grouping (G.3)
-    - Policy evaluation (G.5)
-    - CI semantics via HTTP status (G.6)
-    - Optional LLM presentation (F.x)
-    """
-
-    # 1) Deterministic analysis
+    # 1️⃣ deterministic analysis
     raw_issues = brain.review_code(req.dict())
 
-    # 2) Deterministic explanation layer
+    # 2️⃣ deterministic explanation
     explained_issues = explain_results(raw_issues)
 
-    # 3) H1 — Versioned Policy Evaluation (Enterprise Mode)
+    # =========================
+    # H1 + H2 POLICY SYSTEM
+    # =========================
     policy_cfg = req.policy or {}
 
     policy_version = policy_cfg.get("version", "v1")
     profile = policy_cfg.get("profile", "balanced")
     warning_threshold = policy_cfg.get("warning_threshold", 5)
 
+    # H2 — org override
+    org_name = policy_cfg.get("org")
+    if org_name:
+        org_policy = load_org_policy(org_name)
+        if org_policy:
+            policy_version = org_policy.get("policy_version", policy_version)
+            profile = org_policy.get("profile", profile)
+            warning_threshold = org_policy.get("warning_threshold", warning_threshold)
+
+    # evaluate policy
     policy_result = evaluate_policy(
         explained_issues,
         policy_version=policy_version,
@@ -89,31 +86,29 @@ def review(req: ReviewRequest):
         warning_threshold=warning_threshold
     )
 
-    # 4) Summary block
+    # =========================
+    # Summary
+    # =========================
     summary = {
         "issue_count": len(explained_issues),
-        "error_count": policy_result["error_count"],
-        "warning_count": policy_result["warning_count"],
+        "error_count": policy_result.get("error_count", 0),
+        "warning_count": policy_result.get("warning_count", 0),
         "highest_severity": (
             "error"
-            if policy_result["error_count"] > 0
-            else "warning" if policy_result["warning_count"] > 0
+            if policy_result.get("error_count", 0) > 0
+            else "warning" if policy_result.get("warning_count", 0) > 0
             else "none"
         ),
     }
 
-    # 5) Optional LLM presentation (NON-BLOCKING)
+    # =========================
+    # Optional LLM
+    # =========================
     try:
         llm_text = explain_with_llm(explained_issues)
-        llm_block = {
-            "present": True,
-            "content": llm_text
-        }
+        llm_block = {"present": True, "content": llm_text}
     except Exception:
-        llm_block = {
-            "present": False,
-            "content": None
-        }
+        llm_block = {"present": False, "content": None}
 
     response = {
         "success": True,
@@ -130,21 +125,16 @@ def review(req: ReviewRequest):
         }
     }
 
-    # 6) G.6 — CI enforcement via HTTP status
+    # CI status semantics
     status_code = 200 if policy_result["status"] == "pass" else 422
     return JSONResponse(content=response, status_code=status_code)
 
 
-
-# G.4 — SARIF Export (CI / GitHub Code Scanning)
+# =========================
+# SARIF export
+# =========================
 @app.post("/review/sarif")
 def review_sarif(req: ReviewRequest):
-    """
-    SARIF export for CI systems.
-    Deterministic only.
-    No policy gating.
-    No LLM involvement.
-    """
 
     raw_issues = brain.review_code(req.dict())
     explained = explain_results(raw_issues)

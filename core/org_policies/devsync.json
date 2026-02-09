@@ -1,0 +1,7 @@
+{
+  "profile_name": "devsync_default",
+  "warning_threshold": 3,
+  "fail_on_warning": false,
+  "fail_on_error": true,
+  "description": "Default DevSync engineering policy"
+}

@@ -1,6 +1,5 @@
 from typing import List, Dict
 
-
 SUPPORTED_POLICY_VERSIONS = ["v1"]
 SUPPORTED_PROFILES = ["balanced", "strict", "permissive"]
 
@@ -13,11 +12,11 @@ def evaluate_policy(
     warning_threshold: int = 5
 ) -> Dict:
     """
-    H1 — Versioned Policy Engine
+    H1 — Versioned + Profiled Policy Engine
 
     Supports:
     - versioned policies
-    - profiles
+    - strict / balanced / permissive profiles
     - configurable thresholds
     """
 
@@ -46,7 +45,7 @@ def evaluate_policy(
     warning_count = sum(1 for i in issues if i["severity"] == "warning")
 
     # ------------------------------
-    # PROFILE: STRICT
+    # STRICT PROFILE
     # ------------------------------
     if profile == "strict":
         if error_count > 0 or warning_count > 0:
@@ -69,7 +68,7 @@ def evaluate_policy(
         }
 
     # ------------------------------
-    # PROFILE: PERMISSIVE
+    # PERMISSIVE PROFILE
     # ------------------------------
     if profile == "permissive":
         if error_count > 0:
@@ -92,7 +91,7 @@ def evaluate_policy(
         }
 
     # ------------------------------
-    # PROFILE: BALANCED (default)
+    # BALANCED PROFILE (DEFAULT)
     # ------------------------------
     if error_count > 0:
         return {
