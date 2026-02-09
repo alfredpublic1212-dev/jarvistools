@@ -12,26 +12,27 @@ from core.sarif_exporter import to_sarif
 
 
 
+
 # App init
 app = FastAPI(title="Jarvis Sandbox Reasoning Service")
 brain = ReviewBrain()
 
 
 
-# Request schema
+# Request Schema (PUBLIC API CONTRACT)
 class ReviewRequest(BaseModel):
     file: str
     language: str
     code: str
-    scope: str
+    scope: str = "file"          # DEFAULT FIX (NO MORE 422)
     range: Optional[dict] = None
 
-    # G.5 policy config (optional)
+    # G.5 — policy config (optional)
     policy: Optional[dict] = None
 
 
-# Health
 
+# Health
 @app.get("/health")
 def health():
     return {
@@ -41,12 +42,22 @@ def health():
 
 
 
-# G.1–G.6 — Unified Review Endpoint
+# G.1 — Schema Discovery Endpoint
 
+@app.get("/review/schema")
+def review_schema():
+    """
+    Returns the canonical request schema for /review.
+    Used by DevSync, CI tools, SDKs, and integrators.
+    """
+    return ReviewRequest.model_json_schema()
+
+
+# G.1–G.6 — Unified Review Endpoint (PRODUCT CORE)
 @app.post("/review")
 def review(req: ReviewRequest):
     """
-    Single-call, DevSync + CI-ready review endpoint.
+    Single-call, product-grade review endpoint.
 
     Includes:
     - Deterministic analysis
@@ -54,7 +65,7 @@ def review(req: ReviewRequest):
     - Auto-fixes (G.2)
     - Scope grouping (G.3)
     - Policy evaluation (G.5)
-    - CI exit behavior (G.6)
+    - CI semantics via HTTP status (G.6)
     - Optional LLM presentation (F.x)
     """
 
@@ -86,7 +97,7 @@ def review(req: ReviewRequest):
         ),
     }
 
-    # 5) Optional LLM presentation (non-blocking)
+    # 5) Optional LLM presentation (NON-BLOCKING)
     try:
         llm_text = explain_with_llm(explained_issues)
         llm_block = {
@@ -114,14 +125,13 @@ def review(req: ReviewRequest):
         }
     }
 
-    # 6) G.6 — CI exit via HTTP status
+    # 6) G.6 — CI enforcement via HTTP status
     status_code = 200 if policy_result["status"] == "pass" else 422
     return JSONResponse(content=response, status_code=status_code)
 
 
 
 # G.4 — SARIF Export (CI / GitHub Code Scanning)
-
 @app.post("/review/sarif")
 def review_sarif(req: ReviewRequest):
     """
