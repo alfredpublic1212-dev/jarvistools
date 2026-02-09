@@ -11,4 +11,4 @@ keys/private.pem
 private.pem
 
 # allow public key
-!keys/public.pem
+!core/security/public.pem
