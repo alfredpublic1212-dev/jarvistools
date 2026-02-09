@@ -54,10 +54,10 @@ def review_schema():
 @app.post("/review")
 def review(req: ReviewRequest):
 
-    # 1️⃣ deterministic analysis
+    # 1️ deterministic analysis
     raw_issues = brain.review_code(req.dict())
 
-    # 2️⃣ deterministic explanation
+    # 2 deterministic explanation
     explained_issues = explain_results(raw_issues)
 
     # =========================
