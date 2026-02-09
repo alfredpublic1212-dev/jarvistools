@@ -582,3 +582,4 @@ The platform owns:
 - the safety  
 
 No external AI is required.
+.
