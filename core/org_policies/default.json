@@ -1,5 +1,5 @@
 {
   "policy_version": "v1",
   "profile": "balanced",
-  "warning_threshold":5
+  "warning_threshold": 5
 }
