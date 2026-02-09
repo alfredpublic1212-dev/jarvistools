@@ -1,18 +1,16 @@
-#security/verify_policy.py
 from pathlib import Path
+import os
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.exceptions import InvalidSignature
 
-
-PUBLIC_KEY_PATH = Path("core/security/public.pem")
 POLICY_DIR = Path("core/org_policies")
 
 
 def verify_policy_signature(org: str) -> bool:
     """
-    Verifies that org policy JSON has valid signature.
-    Enterprise security check.
+    Verifies org policy signature using PUBLIC KEY from ENV.
+    Enterprise-grade verification.
     """
 
     policy_path = POLICY_DIR / f"{org}.json"
@@ -24,8 +22,13 @@ def verify_policy_signature(org: str) -> bool:
     if not sig_path.exists():
         raise Exception(f"[SECURITY] Signature missing for org: {org}")
 
+    # 🔐 LOAD PUBLIC KEY FROM ENV (not file)
+    public_key_pem = os.getenv("POLICY_PUBLIC_KEY")
+    if not public_key_pem:
+        raise Exception("[SECURITY] POLICY_PUBLIC_KEY not set on server")
+
     public_key = serialization.load_pem_public_key(
-        PUBLIC_KEY_PATH.read_bytes()
+        public_key_pem.encode()
     )
 
     data = policy_path.read_bytes()
