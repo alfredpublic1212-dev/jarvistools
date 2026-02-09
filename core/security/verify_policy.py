@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import hashlib
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.exceptions import InvalidSignature
@@ -29,6 +30,10 @@ def verify_policy_signature(org: str) -> bool:
 
     print("ENV PUBLIC KEY FOUND: YES")
 
+    #  show first part of public key
+    print("PUBLIC KEY FIRST 80 CHARS:")
+    print(public_key_pem[:80])
+
     try:
         public_key = serialization.load_pem_public_key(
             public_key_pem.encode()
@@ -47,6 +52,8 @@ def verify_policy_signature(org: str) -> bool:
     signature = sig_path.read_bytes()
 
     print("SIGNATURE SIZE:", len(signature))
+    print("POLICY SHA256:", hashlib.sha256(data).hexdigest())
+    print("SIG SHA256:", hashlib.sha256(signature).hexdigest())
 
     try:
         public_key.verify(
