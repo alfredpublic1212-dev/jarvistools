@@ -1,10 +1,12 @@
+# services/jarvis_service.py
 import time
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 from fastapi.responses import JSONResponse
 
+from core.security.api_auth import authenticate_request
 from services.review_brain import ReviewBrain
 from core.explain_engine import explain_results
 from core.policy_engine import evaluate_policy
@@ -13,16 +15,15 @@ from core.sarif_exporter import to_sarif
 from core.org_policy_loader import load_org_policy
 from services.telemetry import log_review_event
 from services.usage_tracker import track_usage
-# =========================
+
+
 # App init
-# =========================
 app = FastAPI(title="Jarvis Sandbox Reasoning Service")
 brain = ReviewBrain()
 
 
-# =========================
+
 # Request Schema
-# =========================
 class ReviewRequest(BaseModel):
     file: str
     language: str
@@ -32,46 +33,49 @@ class ReviewRequest(BaseModel):
     policy: Optional[dict] = None
 
 
-# =========================
+
 # Health
-# =========================
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "jarvis-sandbox"}
 
 
-# =========================
+
 # Schema discovery
-# =========================
 @app.get("/review/schema")
 def review_schema():
     return ReviewRequest.model_json_schema()
 
 
-# =========================
-# MAIN REVIEW ENDPOINT
-# =========================
-@app.post("/review")
-def review(req: ReviewRequest):
 
+# MAIN REVIEW ENDPOINT
+@app.post("/review")
+def review(
+    req: ReviewRequest,
+    org_from_key: str = Depends(authenticate_request)  # H6 AUTH
+):
     start_time = time.time()
 
-    # 1 deterministic analysis
+    
+    # 1 Deterministic analysis
     raw_issues = brain.review_code(req.dict())
 
-    # 2 deterministic explanation
+    
+    # 2 Deterministic explanation
     explained_issues = explain_results(raw_issues)
 
-    # =========================
-    # POLICY SYSTEM
-    # =========================
+    
+    # POLICY SYSTEM (H1–H3)
     policy_cfg = req.policy or {}
 
     policy_version = policy_cfg.get("version", "v1")
     profile = policy_cfg.get("profile", "balanced")
     warning_threshold = policy_cfg.get("warning_threshold", 5)
 
-    org_name = policy_cfg.get("org")
+    # org from API key ONLY (secure)
+    org_name = org_from_key
+
+    # load org policy override
     if org_name:
         org_policy = load_org_policy(org_name)
         if org_policy:
@@ -79,6 +83,7 @@ def review(req: ReviewRequest):
             profile = org_policy.get("profile", profile)
             warning_threshold = org_policy.get("warning_threshold", warning_threshold)
 
+    # evaluate policy
     policy_result = evaluate_policy(
         explained_issues,
         policy_version=policy_version,
@@ -86,9 +91,8 @@ def review(req: ReviewRequest):
         warning_threshold=warning_threshold
     )
 
-    # =========================
+    
     # Summary
-    # =========================
     summary = {
         "issue_count": len(explained_issues),
         "error_count": policy_result.get("error_count", 0),
@@ -101,15 +105,16 @@ def review(req: ReviewRequest):
         ),
     }
 
-    # =========================
-    # Optional LLM
-    # =========================
+    
+    # Optional LLM explanation
     try:
         llm_text = explain_with_llm(explained_issues)
         llm_block = {"present": True, "content": llm_text}
     except Exception:
         llm_block = {"present": False, "content": None}
 
+   
+    # Response object
     response = {
         "success": True,
         "summary": summary,
@@ -125,9 +130,8 @@ def review(req: ReviewRequest):
         }
     }
 
-    # =========================
-    # H4 AUDIT LOGGING
-    # =========================
+    
+    # H4 — AUDIT LOGGING
     try:
         processing_ms = int((time.time() - start_time) * 1000)
 
@@ -147,26 +151,26 @@ def review(req: ReviewRequest):
     except Exception as e:
         print("[AUDIT LOG ERROR]", e)
 
-    # =========================
-    # H5 USAGE TRACKING
-    # =========================
+
+    # H5 — USAGE TRACKING
     try:
         track_usage(org_name)
     except Exception as e:
         print("[USAGE TRACK ERROR]", e)
-    
 
+    
+    # CI status semantics
     status_code = 200 if policy_result["status"] == "pass" else 422
     return JSONResponse(content=response, status_code=status_code)
 
-   
 
-# =========================
-# SARIF EXPORT
-# =========================
+
+# SARIF EXPORT ENDPOINT
 @app.post("/review/sarif")
-def review_sarif(req: ReviewRequest):
-
+def review_sarif(
+    req: ReviewRequest,
+    org_from_key: str = Depends(authenticate_request)  # H6 protected
+):
     raw_issues = brain.review_code(req.dict())
     explained = explain_results(raw_issues)
 
