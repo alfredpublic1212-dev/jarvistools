@@ -53,8 +53,8 @@ def to_sarif(issues: List[Dict], file_path: str) -> Dict:
                 "tool": {
                     "driver": {
                         "name": "WISDOM AI Sandbox",
-                        "informationUri": "https://wisdom-ai.onrender.com",
-                        "version": "sandbox-1.0",
+                        "informationUri": "https://wisdom-ai-fn24.onrender.com",
+                        "version": "wisdom-1.0",
                         "rules": [
                             {
                                 "id": issue["rule_id"],

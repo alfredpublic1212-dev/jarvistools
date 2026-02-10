@@ -246,15 +246,15 @@ System is now enterprise-grade.
 # 8. Deployment & Live Service Testing
 
 Base URL:
-https://wisdom-ai.onrender.com
+https://wisdom-ai-fn24.onrender.com
 
 ## Health Check (wake server)
 GET
-https://wisdom-ai.onrender.com/health
+https://wisdom-ai-fn24.onrender.com.com/health
 
 ## Main Review Endpoint
 POST
-https://wisdom-ai.onrender.com/review
+https://wisdom-ai-fn24.onrender.com.com/review
 
 Headers:
 ```
@@ -277,11 +277,11 @@ Body:
 
 ## Schema Endpoint
 GET
-https://wisdom-ai.onrender.com/review/schema
+https://wisdom-ai-fn24.onrender.com/review/schema
 
 ## SARIF Export
 POST
-https://wisdom-ai.onrender.com/review/sarif
+https://wisdom-ai-fn24.onrender.com/review/sarif
 
 ---
 
