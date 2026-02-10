@@ -1,585 +1,328 @@
-# JARVIS SANDBOX REASONING SERVICE  
+# WISDOM AI — Deterministic Code Intelligence Engine
 ## Product + Platform Architecture & Technical Design Specification
 
-**Version:** 1.0  
-**Status:** Stable (Phase B.3 Complete)  
-**Audience:** System Architects, Platform Engineers, Security Reviewers, Technical Evaluators  
-**Host Platform:** DevSync (Cloud-Based Realtime Coding Platform)  
-**Deployment Environment:** Render Cloud (Stateless Python Service)
+
+**Version:** 2.0 (Phase H Complete)<br>
+**Status:** Enterprise-Grade Deterministic Engine<br>
+**Audience:** System Architects, Platform Engineers, Security Reviewers, Technical Evaluators<br>
+**Deployment:** Render Cloud (Stateless Microservice)<br>
+**Author:** Alfred Jackson I
 
 ---
 
-## 1. Overview
+# 1. Overview
 
-The **Jarvis Sandbox Reasoning Service** is a deterministic, stateless code intelligence engine integrated into the DevSync platform. Its purpose is to perform static analysis, structural reasoning, and policy-driven risk detection on source code **without executing it**.
+**WISDOM AI** is a deterministic code intelligence engine designed to analyze source code for:
 
-This system is:
+- security risks
+- structural issues
+- maintainability problems
+- policy violations
 
-- Not an AI chatbot  
-- Not a code generator  
-- Not a conversational assistant  
+The system performs static analysis and semantic reasoning without executing code.
 
-It is a **code intelligence subsystem** focused on:
+This is not a chatbot.  
+This is not a code generator.  
+This is not a wrapper over ChatGPT.
 
-- security risk detection  
-- maintainability analysis  
-- structural correctness  
-- architectural hygiene  
-
-The service is intentionally isolated from the Jarvis Cognitive OS to preserve strict security and ownership boundaries.
+It is a **deterministic static code intelligence engine**.
 
 ---
 
-## 2. System Context
+# 2. Academic Explanation of the AI Component
 
-### 2.1 Relationship to Jarvis Core (Cognitive OS)
+The system performs deterministic static code analysis combined with an optional natural-language explanation layer to assist developers in understanding code quality, security, and maintainability issues.
 
-Jarvis Core is a private, local, stateful cognitive operating system with:
+The core system is deterministic and rule-based, built using static code analysis techniques such as:
 
-- memory  
-- identity  
-- goals and values  
-- tool execution  
-- command authority  
+- AST parsing
+- control-flow analysis
+- data-flow tracking
+- structural analysis
+- policy evaluation
 
-**Jarvis Sandbox is not Jarvis Core.**
+AI is used only as an optional explanation layer that converts verified analysis results into human-readable review feedback.
 
-Jarvis Sandbox:
+This ensures reliability, reproducibility, and prevents hallucinations while still providing an intelligent developer experience.
 
-- does not persist state  
-- does not execute actions  
-- does not access tools or shell  
-- does not expose memory  
-- does not carry identity  
+Approximately:
 
-Only conceptual reasoning patterns are reused.  
-No runtime code, state, or authority is shared.
+- 80–90% deterministic static analysis
+- 10–20% optional AI explanation
 
-This separation prevents:
-
-- privilege escalation  
-- identity leakage  
-- state corruption  
-- remote execution risk  
+The AI does not decide correctness.
+The AI does not enforce policy.
+The AI does not generate findings.
 
 ---
 
-## 3. Problem Statement & Motivation
+# 3. Core Design Principles
 
-Modern collaborative coding platforms require automated intelligence to:
-
-- detect dangerous patterns early  
-- flag security risks before execution  
-- surface maintainability issues  
-- enforce coding standards  
-- provide deterministic, auditable feedback  
-
-Typical industry solutions rely on:
-
-- third-party SaaS analyzers  
-- cloud-hosted LLM APIs  
-- opaque black-box systems  
-
-This introduces problems:
-
-- source code leaves the platform  
-- behavior is non-deterministic  
-- rules and policy are not owned  
-- reasoning cannot be audited  
-- costs scale per request  
-
-Jarvis Core already contains a sophisticated reasoning architecture but **cannot be exposed**.
-
-The solution is a **clean-room, sandboxed reimplementation**:  
-**Jarvis Sandbox Reasoning Service.**
+1. Deterministic output for identical input
+2. Stateless architecture
+3. Zero code execution
+4. No memory persistence
+5. Cryptographically enforced policy
+6. Organization-isolated configuration
+7. Enterprise-safe deployment
 
 ---
 
-## 4. Design Goals
+# 4. System Architecture
 
-The system is designed with the following non-negotiable constraints:
-
-1. **Determinism**  
-   Same input always produces the same output
-
-2. **Statelessness**  
-   No memory across requests
-
-3. **Safety**  
-   Zero execution capability
-
-4. **Explainability**  
-   Every finding maps to a deterministic rule or structure
-
-5. **Extensibility**  
-   New analyzers can be added without redesign
-
-6. **Cloud Compatibility**  
-   Killable, restartable, horizontally scalable
-
----
-
-## 5. High-Level Architecture
-
-# JARVIS SANDBOX REASONING SERVICE  
-## Product + Platform Architecture & Technical Design Specification
-
-**Version:** 1.0  
-**Status:** Stable (Phase B.3 Complete)  
-**Audience:** System Architects, Platform Engineers, Security Reviewers, Technical Evaluators  
-**Host Platform:** DevSync (Cloud-Based Realtime Coding Platform)  
-**Deployment Environment:** Render Cloud (Stateless Python Service)
-
----
-
-## 1. Overview
-
-The **Jarvis Sandbox Reasoning Service** is a deterministic, stateless code intelligence engine integrated into the DevSync platform. Its purpose is to perform static analysis, structural reasoning, and policy-driven risk detection on source code **without executing it**.
-
-This system is:
-
-- Not an AI chatbot  
-- Not a code generator  
-- Not a conversational assistant  
-
-It is a **code intelligence subsystem** focused on:
-
-- security risk detection  
-- maintainability analysis  
-- structural correctness  
-- architectural hygiene  
-
-The service is intentionally isolated from the Jarvis Cognitive OS to preserve strict security and ownership boundaries.
-
----
-
-## 2. System Context
-
-### 2.1 Relationship to Jarvis Core (Cognitive OS)
-
-Jarvis Core is a private, local, stateful cognitive operating system with:
-
-- memory  
-- identity  
-- goals and values  
-- tool execution  
-- command authority  
-
-**Jarvis Sandbox is not Jarvis Core.**
-
-Jarvis Sandbox:
-
-- does not persist state  
-- does not execute actions  
-- does not access tools or shell  
-- does not expose memory  
-- does not carry identity  
-
-Only conceptual reasoning patterns are reused.  
-No runtime code, state, or authority is shared.
-
-This separation prevents:
-
-- privilege escalation  
-- identity leakage  
-- state corruption  
-- remote execution risk  
-
----
-
-## 3. Problem Statement & Motivation
-
-Modern collaborative coding platforms require automated intelligence to:
-
-- detect dangerous patterns early  
-- flag security risks before execution  
-- surface maintainability issues  
-- enforce coding standards  
-- provide deterministic, auditable feedback  
-
-Typical industry solutions rely on:
-
-- third-party SaaS analyzers  
-- cloud-hosted LLM APIs  
-- opaque black-box systems  
-
-This introduces problems:
-
-- source code leaves the platform  
-- behavior is non-deterministic  
-- rules and policy are not owned  
-- reasoning cannot be audited  
-- costs scale per request  
-
-Jarvis Core already contains a sophisticated reasoning architecture but **cannot be exposed**.
-
-The solution is a **clean-room, sandboxed reimplementation**:  
-**Jarvis Sandbox Reasoning Service.**
-
----
-
-## 4. Design Goals
-
-The system is designed with the following non-negotiable constraints:
-
-1. **Determinism**  
-   Same input always produces the same output
-
-2. **Statelessness**  
-   No memory across requests
-
-3. **Safety**  
-   Zero execution capability
-
-4. **Explainability**  
-   Every finding maps to a deterministic rule or structure
-
-5. **Extensibility**  
-   New analyzers can be added without redesign
-
-6. **Cloud Compatibility**  
-   Killable, restartable, horizontally scalable
-
----
-
-## 5. High-Level Architecture
 ```
-DevSync UI
-|
-v
-DevSync Backend (/api/ai/review)
-|
-v
-Jarvis Sandbox Service (Render Cloud)
-|
-v
-Static Analysis Engine
-├── Regex Prefilter
-├── AST Analyzer ← Primary Authority
-├── Structural Analyzer
-└── Result Normalizer
+Client / DevSync UI
+        |
+        v
+HTTP API (FastAPI)
+        |
+        v
+WISDOM AI Sandbox Engine
+        |
+        ├── AST Analyzer
+        ├── Structural Analyzer
+        ├── Semantic Engine
+        ├── Policy Engine
+        ├── Audit Logger
+        ├── Usage Tracker
+        └── Rate Limiter
 ```
-
-
-
-Jarvis Sandbox is a pure analysis backend.  
-DevSync remains the editor, UI, and collaboration layer.
-
----
-
-## 6. Internal Module Architecture
-
-### 6.1 Service Transport Layer
-
-**File:** `services/jarvis_service.py`
-
-Responsibilities:
-
-- HTTP request handling  
-- payload validation  
-- response formatting  
-
-Endpoints:
-
-- `GET /health`  
-- `POST /review_code`  
-
-No analysis logic exists here.
-
----
-
-### 6.2 ReviewBrain (Analysis Orchestrator)
-
-**File:** `services/review_brain.py`
-
-Responsibilities:
-
-- orchestrate analysis passes  
-- enforce ordering rules  
-- merge results  
-- suppress duplicate findings  
-
-Pipeline order:
-
-1. Regex prefilter (limited scope)  
-2. AST analyzer (authoritative)  
-3. Structural analyzer  
-4. Result normalization  
-
-ReviewBrain never executes code.
-
----
-
-### 6.3 Regex Prefilter
-
-Purpose:
-
-- detect destructive literal strings  
-- fast rejection of obvious hazards  
-
-Characteristics:
-
-- string-based  
-- non-authoritative  
-- shrinking over time  
-
-AST findings always override regex findings.
-
----
-
-### 6.4 AST Analyzer (Primary Intelligence Layer)
-
-**File:** `core/ast_analyzer.py`
-
-Uses Python’s Abstract Syntax Tree to perform structural inspection.
-
-Current detections:
-
-- infinite loops (`while True` without `break`)  
-- `eval` / `exec`  
-- `os.system`  
-- `subprocess.*`  
-- file writes via `open(..., "w"/"a"/"+")`  
-- bare `except` blocks  
-- empty exception handlers  
-- syntax errors  
-
-Properties:
-
-- formatting-independent  
-- resilient to obfuscation  
-- deterministic  
-- language-aware  
-
-AST is the primary source of truth.
-
----
-
-### 6.5 Structural Analyzer
-
-**File:** `core/structure_analyzer.py`
-
-Focuses on maintainability and readability, not security.
-
-Current detections:
-
-- deep nesting  
-- structural complexity warnings  
-
-Answers:
-
-> “Is this code readable, maintainable, and structurally sane?”
-
----
-
-## 7. Detection Philosophy
-
-Each finding includes:
-
-- severity  
-- category  
-- message  
-- confidence  
-
-Rules:
-
-- one issue produces one result  
-- no duplicate reporting  
-- no escalation without a concrete finding  
-- AST > Regex > Heuristics  
-
-No probabilistic output exists.
-
----
-
-## 8. Security Model
-
-The service is analysis-only.
-
-Explicitly prohibited:
-
-- code execution  
-- shell access  
-- filesystem writes  
-- network calls  
-- memory persistence  
-- identity handling  
 
 The service behaves as a pure function:
+
 ```
-Input text → Analysis result
+Input code → deterministic analysis → structured findings
 ```
 
 ---
 
-## 9. Deployment Architecture
+# 5. Intelligence Layers
 
-### 9.1 Environment
+## 5.1 Structural Intelligence
 
-- Render Cloud  
-- stateless container deployment  
-- auto-deploy on Git push  
+- AST parsing
+- naming checks
+- unused imports
+- complexity warnings
+- code hygiene
 
-### 9.2 Runtime Behavior
+## 5.2 Semantic Intelligence
 
-- service may sleep after inactivity  
-- first request may incur cold start  
-- `/health` endpoint wakes service  
+- control flow analysis
+- data flow tracking
+- taint propagation
+- resource misuse detection
+- unreachable code detection
 
-No manual server management is required.
+## 5.3 Policy Engine
 
----
+Deterministic enforcement:
 
-## 10. Integration with DevSync
+- error count
+- warning thresholds
+- org-specific policy
+- CI pass/fail decision
 
-DevSync responsibilities:
+## 5.4 Optional AI Explanation Layer
 
-- editor UI  
-- selection handling  
-- request forwarding  
-- result visualization  
+Used only to translate deterministic findings into readable explanations.
 
-Jarvis Sandbox responsibilities:
-
-- analysis only  
-- no UI  
-- no state  
-
-This separation ensures clean ownership boundaries.
-
----
-
-## 11. Current Capability Summary (Phase B.3)
-
-Implemented and verified:
-
-- deterministic analysis  
-- AST-based detection  
-- structural warnings  
-- duplicate suppression  
-- Render deployment  
-- DevSync integration  
-
-Verified test cases:
-
-- infinite loop detection  
-- `eval` detection  
-- `os.system` detection  
-- bare `except` detection  
-- deep nesting detection  
+Cannot:
+- add findings
+- modify results
+- override policy
 
 ---
 
-## 12. Roadmap
+# 6. Security Architecture
 
-### Phase A — Sandboxed Reasoning Service  
-**Status:** Complete
+## 6.1 Cryptographic Policy Signing
 
-- stateless service  
-- cloud deployment  
-- DevSync integration  
+Each org policy is RSA signed.
+Server verifies signature before loading.
 
----
+Prevents:
+- tampering
+- unauthorized rule changes
+- malicious config injection
 
-### Phase B — Structural Intelligence
+## 6.2 API Key Authentication
 
-**B.1**  
-- AST parsing  
-- basic structural rules  
+Every request must include:
 
-**B.2**  
-- duplicate suppression  
-- AST as authority  
-- regex minimization  
+```
+x-api-key: <org_key>
+```
 
-**B.3**  
-- nesting depth detection  
-- maintainability warnings  
+Server resolves:
+- organization identity
+- policy
+- usage tracking
+- rate limits
 
-**B.4 (Next)**  
-- cyclomatic complexity  
-- large function detection  
-- parameter count rules  
+## 6.3 Audit Logging
 
----
+Every scan produces structured audit event:
 
-### Phase C — Semantic Intelligence
+```
+{"event":"review_completed","org":"devsync",...}
+```
 
-- control-flow graphs  
-- data-flow analysis  
-- taint tracking  
-- resource leak detection  
+Tracks:
+- org
+- file
+- issues
+- policy result
+- processing time
 
----
+## 6.4 Usage Tracking
 
-### Phase D — Architectural Intelligence
+Per-org scan tracking.
+Stored as JSON (no DB required).
 
-- module dependency graphs  
-- circular dependency detection  
-- boundary enforcement  
-- layered architecture rules  
+## 6.5 Rate Limiting
 
----
+Per-org daily limits enforced.
+Example:
 
-### Phase E — Advisory Layer
+```
+100 scans/day
+```
 
-- explanation endpoints  
-- remediation guidance  
-- refactoring advice  
-- technical debt scoring  
-
----
-
-### Phase F — Optional LLM Presentation Layer
-
-- human-readable explanations only  
-- no decision authority  
-- no execution  
-- no policy control  
+Blocks abuse and protects system.
 
 ---
 
-### Phase G — Platformization
+# 7. Phase Completion Status
 
-- organizations  
-- policy packs  
-- CI/CD integration  
-- audit trails  
+## Phase A — Foundation
+- Stateless engine
+- Cloud deploy
+- HTTP API
+
+## Phase B — Structural Intelligence
+- AST analysis
+- rule engine
+- deduplication
+
+## Phase C — Semantic Intelligence
+- CFG
+- DFG
+- taint tracking
+- resource analysis
+
+## Phase D — Architectural Intelligence
+- module hygiene
+- mixed concerns
+- god module detection
+
+## Phase E — Advisory Intelligence
+- deterministic explanations
+- remediation guidance
+
+## Phase F — AI Presentation Layer
+- explanation-only LLM
+- no decision authority
+
+## Phase G — Platformization
+- unified schema
+- SARIF export
+- autofix suggestions
+- policy engine
+
+## Phase H — Enterprise Hardening (COMPLETE)
+- signed policies
+- org isolation
+- tamper verification
+- audit logging
+- usage tracking
+- API authentication
+- rate limiting
+
+System is now enterprise-grade.
 
 ---
 
-## 13. Final Positioning
+# 8. Deployment & Live Service Testing
 
-This is not:
+Base URL:
+https://jarvis-sandbox.onrender.com
 
-> “We added AI to our editor.”
+## Health Check (wake server)
+GET
+https://jarvis-sandbox.onrender.com/health
 
-This is:
+## Main Review Endpoint
+POST
+https://jarvis-sandbox.onrender.com/review
 
-> “We are building a deterministic, self-owned code intelligence platform.”
+Headers:
+```
+x-api-key: devsync_live_abc123
+Content-Type: application/json
+```
 
-Comparable to:
+Body:
+```
+{
+  "file": "test.py",
+  "language": "python",
+  "code": "print('hello world')",
+  "scope": "file",
+  "policy": {
+    "org": "devsync"
+  }
+}
+```
 
-- SonarQube  
-- Snyk  
-- CodeQL  
-- Semgrep  
+## Schema Endpoint
+GET
+https://jarvis-sandbox.onrender.com/review/schema
 
-But fully deterministic, auditable, privacy-preserving, and extensible.
+## SARIF Export
+POST
+https://jarvis-sandbox.onrender.com/review/sarif
 
 ---
 
-## 14. Core Philosophy
+# 9. Local Development
 
-Jarvis Core is sacred.  
-The Sandbox is a tool shell.
+Run locally:
+```
+uvicorn services.jarvis_service:app --reload --port 8000
+```
 
-The platform owns:
+---
 
-- the rules  
-- the policy  
-- the intelligence  
-- the safety  
+# 10. Policy Signing Rule (Critical)
 
-No external AI is required.
-.
+If editing:
+```
+core/org_policies/devsync.json
+```
+You MUST run:
+```
+python core/security/sign_policy.py
+```
+before deploy.
+
+Otherwise server will reject policy.
+
+---
+
+# 11. Final Positioning
+
+WISDOM AI is a deterministic code intelligence engine comparable to:
+
+- SonarQube core
+- Semgrep engine
+- CodeQL static analysis
+
+But:
+- self-owned
+- deterministic
+- auditable
+- secure
+
+Built as an enterprise-grade analysis engine, not a demo project.
+
