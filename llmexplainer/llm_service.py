@@ -7,7 +7,7 @@ from llmexplainer.schemas import (
 from llmexplainer.prompt_contract import SYSTEM_PROMPT, build_prompt
 from llmexplainer.llm_guard import guard_llm_output
 
-app = FastAPI(title="Jarvis LLM Explainer")
+app = FastAPI(title="WISDOM AI Code Intelligence ")
 
 
 # -----------------------------

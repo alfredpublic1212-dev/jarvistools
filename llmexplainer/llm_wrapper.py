@@ -25,7 +25,7 @@ def explain_with_llm(findings: list[dict]) -> str:
             "messages": [
                 {
                     "role": "system",
-                    "content": "You are a professional AI code review explainer."
+                    "content": "You are a professional WISDOM AI Code Intelligence explainer."
                 },
                 {
                     "role": "user",
@@ -41,14 +41,14 @@ def explain_with_llm(findings: list[dict]) -> str:
     try:
         response.raise_for_status()
     except requests.HTTPError:
-        return "The AI explainer is temporarily unavailable."
+        return "WISDOM AI Code Intelligence is temporarily unavailable."
 
     data = response.json()
 
     # ABSOLUTE SAFETY GUARD (NO MORE 500s)
     choices = data.get("choices")
     if not choices or not isinstance(choices, list):
-        return "The AI explainer could not generate a response."
+        return "WISDOM AI Code Intelligence explainer could not generate a response."
 
     message = choices[0].get("message", {})
     return message.get("content", "").strip()
