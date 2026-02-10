@@ -37,3 +37,5 @@ def track_usage(org: str | None):
 
     with open(usage_file, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
+    
+    print("[USAGE]", data)
