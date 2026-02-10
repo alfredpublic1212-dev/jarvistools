@@ -6,6 +6,7 @@ from typing import Optional
 from datetime import datetime
 from fastapi.responses import JSONResponse
 
+from services.rate_limiter import enforce_rate_limit
 from core.security.api_auth import authenticate_request
 from services.review_brain import ReviewBrain
 from core.explain_engine import explain_results
@@ -17,13 +18,16 @@ from services.telemetry import log_review_event
 from services.usage_tracker import track_usage
 
 
+# =========================
 # App init
+# =========================
 app = FastAPI(title="Jarvis Sandbox Reasoning Service")
 brain = ReviewBrain()
 
 
-
+# =========================
 # Request Schema
+# =========================
 class ReviewRequest(BaseModel):
     file: str
     language: str
@@ -33,22 +37,25 @@ class ReviewRequest(BaseModel):
     policy: Optional[dict] = None
 
 
-
+# =========================
 # Health
+# =========================
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "jarvis-sandbox"}
 
 
-
+# =========================
 # Schema discovery
+# =========================
 @app.get("/review/schema")
 def review_schema():
     return ReviewRequest.model_json_schema()
 
 
-
+# =========================
 # MAIN REVIEW ENDPOINT
+# =========================
 @app.post("/review")
 def review(
     req: ReviewRequest,
@@ -56,24 +63,32 @@ def review(
 ):
     start_time = time.time()
 
-    
+    # org from API key (secure source of truth)
+    org_name = org_from_key
+
+    # =========================
+    # H7 RATE LIMIT CHECK (DO FIRST)
+    # =========================
+    enforce_rate_limit(org_name)
+
+    # =========================
     # 1 Deterministic analysis
+    # =========================
     raw_issues = brain.review_code(req.dict())
 
-    
+    # =========================
     # 2 Deterministic explanation
+    # =========================
     explained_issues = explain_results(raw_issues)
 
-    
+    # =========================
     # POLICY SYSTEM (H1–H3)
+    # =========================
     policy_cfg = req.policy or {}
 
     policy_version = policy_cfg.get("version", "v1")
     profile = policy_cfg.get("profile", "balanced")
     warning_threshold = policy_cfg.get("warning_threshold", 5)
-
-    # org from API key ONLY (secure)
-    org_name = org_from_key
 
     # load org policy override
     if org_name:
@@ -91,8 +106,9 @@ def review(
         warning_threshold=warning_threshold
     )
 
-    
+    # =========================
     # Summary
+    # =========================
     summary = {
         "issue_count": len(explained_issues),
         "error_count": policy_result.get("error_count", 0),
@@ -105,16 +121,18 @@ def review(
         ),
     }
 
-    
+    # =========================
     # Optional LLM explanation
+    # =========================
     try:
         llm_text = explain_with_llm(explained_issues)
         llm_block = {"present": True, "content": llm_text}
     except Exception:
         llm_block = {"present": False, "content": None}
 
-   
-    # Response object
+    # =========================
+    # Response
+    # =========================
     response = {
         "success": True,
         "summary": summary,
@@ -130,8 +148,9 @@ def review(
         }
     }
 
-    
+    # =========================
     # H4 — AUDIT LOGGING
+    # =========================
     try:
         processing_ms = int((time.time() - start_time) * 1000)
 
@@ -151,26 +170,34 @@ def review(
     except Exception as e:
         print("[AUDIT LOG ERROR]", e)
 
-
+    # =========================
     # H5 — USAGE TRACKING
+    # =========================
     try:
         track_usage(org_name)
     except Exception as e:
         print("[USAGE TRACK ERROR]", e)
 
-    
+    # =========================
     # CI status semantics
+    # =========================
     status_code = 200 if policy_result["status"] == "pass" else 422
     return JSONResponse(content=response, status_code=status_code)
 
 
-
+# =========================
 # SARIF EXPORT ENDPOINT
+# =========================
 @app.post("/review/sarif")
 def review_sarif(
     req: ReviewRequest,
-    org_from_key: str = Depends(authenticate_request)  # H6 protected
+    org_from_key: str = Depends(authenticate_request)
 ):
+    org_name = org_from_key
+
+    # RATE LIMIT for SARIF too
+    enforce_rate_limit(org_name)
+
     raw_issues = brain.review_code(req.dict())
     explained = explain_results(raw_issues)
 
