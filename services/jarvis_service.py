@@ -1,3 +1,4 @@
+import time
 from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import Optional
@@ -10,9 +11,11 @@ from core.policy_engine import evaluate_policy
 from llmexplainer.llm_wrapper import explain_with_llm
 from core.sarif_exporter import to_sarif
 from core.org_policy_loader import load_org_policy
+from services.telemetry import log_review_event
 
-
+# =========================
 # App init
+# =========================
 app = FastAPI(title="Jarvis Sandbox Reasoning Service")
 brain = ReviewBrain()
 
@@ -24,7 +27,7 @@ class ReviewRequest(BaseModel):
     file: str
     language: str
     code: str
-    scope: str = "file"  # default avoids 422 forever
+    scope: str = "file"
     range: Optional[dict] = None
     policy: Optional[dict] = None
 
@@ -41,7 +44,7 @@ def health():
 
 
 # =========================
-# Schema discovery endpoint
+# Schema discovery
 # =========================
 @app.get("/review/schema")
 def review_schema():
@@ -49,15 +52,21 @@ def review_schema():
 
 
 # =========================
-# MAIN PRODUCT ENDPOINT
+# MAIN REVIEW ENDPOINT
 # =========================
 @app.post("/review")
 def review(req: ReviewRequest):
 
-    # 1️ deterministic analysis
+    start_time = time.time()
+
+    # -------------------------
+    # 1 Deterministic analysis
+    # -------------------------
     raw_issues = brain.review_code(req.dict())
 
-    # 2 deterministic explanation
+    # -------------------------
+    # 2 Deterministic explanation
+    # -------------------------
     explained_issues = explain_results(raw_issues)
 
     # =========================
@@ -69,7 +78,7 @@ def review(req: ReviewRequest):
     profile = policy_cfg.get("profile", "balanced")
     warning_threshold = policy_cfg.get("warning_threshold", 5)
 
-    # H2 — org override
+    # H2 org override
     org_name = policy_cfg.get("org")
     if org_name:
         org_policy = load_org_policy(org_name)
@@ -110,6 +119,9 @@ def review(req: ReviewRequest):
     except Exception:
         llm_block = {"present": False, "content": None}
 
+    # =========================
+    # Response
+    # =========================
     response = {
         "success": True,
         "summary": summary,
@@ -125,13 +137,37 @@ def review(req: ReviewRequest):
         }
     }
 
+    # =========================
+    # H4 ENTERPRISE AUDIT LOGGING
+    # =========================
+    try:
+        processing_ms = int((time.time() - start_time) * 1000)
+
+        log_review_event(
+            org=org_name,
+            file=req.file,
+            language=req.language,
+            issue_count=summary["issue_count"],
+            error_count=summary["error_count"],
+            warning_count=summary["warning_count"],
+            policy_status=policy_result["status"],
+            policy_version=policy_version,
+            profile=profile,
+            processing_ms=processing_ms,
+            signature_valid=True
+        )
+    except Exception as e:
+        print("[AUDIT LOG ERROR]", e)
+
+    # =========================
     # CI status semantics
+    # =========================
     status_code = 200 if policy_result["status"] == "pass" else 422
     return JSONResponse(content=response, status_code=status_code)
 
 
 # =========================
-# SARIF export
+# SARIF export endpoint
 # =========================
 @app.post("/review/sarif")
 def review_sarif(req: ReviewRequest):

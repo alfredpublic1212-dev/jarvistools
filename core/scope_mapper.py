@@ -1,3 +1,4 @@
+# core/scope_mapper.py
 import ast
 from typing import List, Dict
 

@@ -1,3 +1,4 @@
+#core/security/verify_policy.py
 from pathlib import Path
 import os
 import hashlib

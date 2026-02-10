@@ -1,4 +1,4 @@
-#   core/ast_analyzer.py
+#   core/structure_analyzer.py
 import ast
 from typing import List, Dict
 
