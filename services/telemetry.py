@@ -15,6 +15,7 @@ except Exception as e:
 
 def _write_log(entry: dict):
     try:
+        print("[AUDIT]", json.dumps(entry))
         with open(AUDIT_LOG, "a", encoding="utf-8") as f:
             f.write(json.dumps(entry) + "\n")
     except Exception as e:
