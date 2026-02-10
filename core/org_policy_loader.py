@@ -39,7 +39,7 @@ def load_org_policy(org: str) -> dict:
         raise Exception(f"[POLICY] Org policy not found: {org}")
 
     #VERIFY SIGNATURE BEFORE LOADING
-    # This ensures policy was signed by YOU (Jarvis owner)
+    # This ensures policy was signed by YOU (wisdom-ai owner)
     verify_policy_signature(org)
 
     # Load verified policy

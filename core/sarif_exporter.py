@@ -6,7 +6,7 @@ from datetime import datetime
 
 def to_sarif(issues: List[Dict], file_path: str) -> Dict:
     """
-    Convert Jarvis Sandbox issues into SARIF 2.1.0 format.
+    Convert wisdom-ai issues into SARIF 2.1.0 format.
     Deterministic-only. CI-safe.
     """
 
@@ -52,8 +52,8 @@ def to_sarif(issues: List[Dict], file_path: str) -> Dict:
             {
                 "tool": {
                     "driver": {
-                        "name": "Jarvis Sandbox",
-                        "informationUri": "https://jarvis-sandbox.onrender.com",
+                        "name": "WISDOM AI Sandbox",
+                        "informationUri": "https://wisdom-ai.onrender.com",
                         "version": "sandbox-1.0",
                         "rules": [
                             {

@@ -1,4 +1,4 @@
-# services/jarvis_service.py
+# services/wisdom_service.py
 import time
 from fastapi import FastAPI, Depends
 from pydantic import BaseModel
@@ -21,7 +21,7 @@ from services.usage_tracker import track_usage
 # =========================
 # App init
 # =========================
-app = FastAPI(title="Jarvis Sandbox Reasoning Service")
+app = FastAPI(title="WISDOM AI Code Intelligence Engine")
 brain = ReviewBrain()
 
 
@@ -42,7 +42,7 @@ class ReviewRequest(BaseModel):
 # =========================
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "jarvis-sandbox"}
+    return {"status": "ok", "service": "wisdom-ai"}
 
 
 # =========================
@@ -141,7 +141,7 @@ def review(
         "llm_explanation": llm_block,
         "metadata": {
             "schema_version": "1.2",
-            "engine_version": "sandbox-1.0",
+            "engine_version": "wisdom-1.0",
             "analysis_scope": "single-file",
             "llm_used": llm_block["present"],
             "timestamp": datetime.utcnow().isoformat() + "Z"

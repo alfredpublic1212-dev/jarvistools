@@ -246,15 +246,15 @@ System is now enterprise-grade.
 # 8. Deployment & Live Service Testing
 
 Base URL:
-https://jarvis-sandbox.onrender.com
+https://wisdom-ai.onrender.com
 
 ## Health Check (wake server)
 GET
-https://jarvis-sandbox.onrender.com/health
+https://wisdom-ai.onrender.com/health
 
 ## Main Review Endpoint
 POST
-https://jarvis-sandbox.onrender.com/review
+https://wisdom-ai.onrender.com/review
 
 Headers:
 ```
@@ -277,11 +277,11 @@ Body:
 
 ## Schema Endpoint
 GET
-https://jarvis-sandbox.onrender.com/review/schema
+https://wisdom-ai.onrender.com/review/schema
 
 ## SARIF Export
 POST
-https://jarvis-sandbox.onrender.com/review/sarif
+https://wisdom-ai.onrender.com/review/sarif
 
 ---
 
@@ -289,7 +289,7 @@ https://jarvis-sandbox.onrender.com/review/sarif
 
 Run locally:
 ```
-uvicorn services.jarvis_service:app --reload --port 8000
+uvicorn services.wisdom_service:app --reload --port 8000
 ```
 
 ---

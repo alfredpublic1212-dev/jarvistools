@@ -1,4 +1,4 @@
-name: Jarvis Sandbox CI Policy Check
+name: WISDOM AI Sandbox CI Policy Check
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  jarvis-policy:
+  wisdom-policy:
     runs-on: ubuntu-latest
 
     steps:
@@ -23,7 +23,7 @@ jobs:
         run: |
           pip install -r requirements.txt
 
-      - name: Run Jarvis Sandbox Policy Check (User Code Only)
+      - name: Run WISDOM AI Sandbox Policy Check (User Code Only)
         run: |
           python - << 'EOF'
           import sys
@@ -70,5 +70,5 @@ jobs:
           if policy["status"] == "fail":
               sys.exit(1)
 
-          print("Jarvis Sandbox policy passed.")
+          print("WISDOM AI Sandbox policy passed.")
           EOF
