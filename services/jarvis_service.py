@@ -21,7 +21,7 @@ brain = ReviewBrain()
 
 
 # =========================
-# Request Schema (PUBLIC CONTRACT)
+# Request Schema
 # =========================
 class ReviewRequest(BaseModel):
     file: str
@@ -37,10 +37,7 @@ class ReviewRequest(BaseModel):
 # =========================
 @app.get("/health")
 def health():
-    return {
-        "status": "ok",
-        "service": "jarvis-sandbox"
-    }
+    return {"status": "ok", "service": "jarvis-sandbox"}
 
 
 # =========================
@@ -59,18 +56,14 @@ def review(req: ReviewRequest):
 
     start_time = time.time()
 
-    # -------------------------
-    # 1 Deterministic analysis
-    # -------------------------
+    # 1 deterministic analysis
     raw_issues = brain.review_code(req.dict())
 
-    # -------------------------
-    # 2 Deterministic explanation
-    # -------------------------
+    # 2 deterministic explanation
     explained_issues = explain_results(raw_issues)
 
     # =========================
-    # H1 + H2 POLICY SYSTEM
+    # POLICY SYSTEM
     # =========================
     policy_cfg = req.policy or {}
 
@@ -78,7 +71,6 @@ def review(req: ReviewRequest):
     profile = policy_cfg.get("profile", "balanced")
     warning_threshold = policy_cfg.get("warning_threshold", 5)
 
-    # H2 org override
     org_name = policy_cfg.get("org")
     if org_name:
         org_policy = load_org_policy(org_name)
@@ -87,7 +79,6 @@ def review(req: ReviewRequest):
             profile = org_policy.get("profile", profile)
             warning_threshold = org_policy.get("warning_threshold", warning_threshold)
 
-    # evaluate policy
     policy_result = evaluate_policy(
         explained_issues,
         policy_version=policy_version,
@@ -119,9 +110,6 @@ def review(req: ReviewRequest):
     except Exception:
         llm_block = {"present": False, "content": None}
 
-    # =========================
-    # Response
-    # =========================
     response = {
         "success": True,
         "summary": summary,
@@ -138,7 +126,7 @@ def review(req: ReviewRequest):
     }
 
     # =========================
-    # H4 ENTERPRISE AUDIT LOGGING
+    # H4 AUDIT LOGGING
     # =========================
     try:
         processing_ms = int((time.time() - start_time) * 1000)
@@ -159,15 +147,12 @@ def review(req: ReviewRequest):
     except Exception as e:
         print("[AUDIT LOG ERROR]", e)
 
-    # =========================
-    # CI status semantics
-    # =========================
     status_code = 200 if policy_result["status"] == "pass" else 422
     return JSONResponse(content=response, status_code=status_code)
 
 
 # =========================
-# SARIF export endpoint
+# SARIF EXPORT
 # =========================
 @app.post("/review/sarif")
 def review_sarif(req: ReviewRequest):

@@ -6,13 +6,19 @@ import uuid
 LOG_DIR = Path("logs")
 AUDIT_LOG = LOG_DIR / "audit.log"
 
-# ensure log folder exists
-LOG_DIR.mkdir(exist_ok=True)
+# ensure log folder exists safely
+try:
+    LOG_DIR.mkdir(exist_ok=True)
+except Exception as e:
+    print("[AUDIT INIT ERROR]", e)
 
 
 def _write_log(entry: dict):
-    with open(AUDIT_LOG, "a", encoding="utf-8") as f:
-        f.write(json.dumps(entry) + "\n")
+    try:
+        with open(AUDIT_LOG, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry) + "\n")
+    except Exception as e:
+        print("[AUDIT WRITE ERROR]", e)
 
 
 def log_review_event(
@@ -31,7 +37,6 @@ def log_review_event(
 ):
     """
     H4 — Enterprise audit logging
-
     Writes structured JSONL logs.
     One line per review request.
     """
