@@ -12,7 +12,7 @@ from llmexplainer.llm_wrapper import explain_with_llm
 from core.sarif_exporter import to_sarif
 from core.org_policy_loader import load_org_policy
 from services.telemetry import log_review_event
-
+from services.usage_tracker import track_usage
 # =========================
 # App init
 # =========================
@@ -147,9 +147,19 @@ def review(req: ReviewRequest):
     except Exception as e:
         print("[AUDIT LOG ERROR]", e)
 
+    # =========================
+    # H5 USAGE TRACKING
+    # =========================
+    try:
+        track_usage(org_name)
+    except Exception as e:
+        print("[USAGE TRACK ERROR]", e)
+    
+
     status_code = 200 if policy_result["status"] == "pass" else 422
     return JSONResponse(content=response, status_code=status_code)
 
+   
 
 # =========================
 # SARIF EXPORT
