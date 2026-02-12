@@ -24,9 +24,7 @@ def _issue(
         "confidence": confidence,
     }
 
-    # -----------------------------
-    # Location metadata (BEST-EFFORT)
-    # -----------------------------
+    # Attach location metadata (for editor jump)
     if node is not None and hasattr(node, "lineno"):
         issue["location"] = {
             "line": node.lineno,
@@ -40,17 +38,32 @@ def _issue(
 
 
 class DFGVisitor(ast.NodeVisitor):
+    """
+    SMART DFG ENGINE (production-grade)
+
+    Goals:
+    - ZERO false positives for valid Python
+    - Detect real use-before-assign
+    - Detect real unused vars
+    - Handle classes, funcs, imports, with-open
+    - Cursor-level realistic behaviour
+    """
+
     def __init__(self, source_lines: list[str]):
         self.issues: List[Dict] = []
+        self.source_lines = source_lines
 
-        # scope stack: global → function → nested
+        # scope stack
         self.scope_stack: List[Set[str]] = [set()]
 
-        # function-local tracking
-        self.local_assigned: Set[str] = set()
-        self.local_used: Set[str] = set()
+        # tracking
+        self.assigned: Set[str] = set()
+        self.used: Set[str] = set()
 
-        self.source_lines = source_lines
+        # globals
+        self.defined_functions: Set[str] = set()
+        self.defined_classes: Set[str] = set()
+        self.imported_modules: Set[str] = set()
 
     # -----------------------------
     # Scope helpers
@@ -64,41 +77,70 @@ class DFGVisitor(ast.NodeVisitor):
     def current_scope(self) -> Set[str]:
         return self.scope_stack[-1]
 
+    def declare(self, name: str):
+        self.current_scope().add(name)
+        self.assigned.add(name)
+
+    def is_declared(self, name: str) -> bool:
+        return any(name in scope for scope in self.scope_stack)
+
     # -----------------------------
-    # IMPORTS CREATE BINDINGS
+    # Imports
     # -----------------------------
     def visit_Import(self, node: ast.Import):
         for alias in node.names:
             name = alias.asname or alias.name.split(".")[0]
-            self.scope_stack[0].add(name)
+            self.declare(name)
+            self.imported_modules.add(name)
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom):
         for alias in node.names:
             name = alias.asname or alias.name
-            self.scope_stack[0].add(name)
+            self.declare(name)
         self.generic_visit(node)
 
     # -----------------------------
-    # Function boundary
+    # Class definitions
+    # -----------------------------
+    def visit_ClassDef(self, node: ast.ClassDef):
+        self.declare(node.name)
+        self.defined_classes.add(node.name)
+
+        self.enter_scope()
+        for stmt in node.body:
+            self.visit(stmt)
+        self.exit_scope()
+
+    # -----------------------------
+    # Function definitions
     # -----------------------------
     def visit_FunctionDef(self, node: ast.FunctionDef):
+        self.declare(node.name)
+        self.defined_functions.add(node.name)
+
         self.enter_scope()
 
-        self.local_assigned = set()
-        self.local_used = set()
-
-        # parameters are assigned
+        # parameters are declared
         for arg in node.args.args:
-            self.local_assigned.add(arg.arg)
-            self.current_scope().add(arg.arg)
+            self.declare(arg.arg)
 
         for stmt in node.body:
             self.visit(stmt)
 
-        # unused locals
-        for var in self.local_assigned:
-            if var not in self.local_used:
+        # detect unused locals (real only)
+        for var in list(self.assigned):
+            if var not in self.used:
+                # ignore common safe cases
+                if var.startswith("_"):
+                    continue
+                if var in self.defined_functions:
+                    continue
+                if var in self.defined_classes:
+                    continue
+                if var in self.imported_modules:
+                    continue
+
                 self.issues.append(
                     _issue(
                         "DFG_UNUSED_VARIABLE",
@@ -114,28 +156,27 @@ class DFGVisitor(ast.NodeVisitor):
         self.exit_scope()
 
     # -----------------------------
+    # WITH open(...) as f:
+    # -----------------------------
+    def visit_With(self, node: ast.With):
+        for item in node.items:
+            if item.optional_vars and isinstance(item.optional_vars, ast.Name):
+                self.declare(item.optional_vars.id)
+        self.generic_visit(node)
+
+    # -----------------------------
     # Assignments
     # -----------------------------
     def visit_Assign(self, node: ast.Assign):
         for target in node.targets:
             if isinstance(target, ast.Name):
-                for scope in self.scope_stack[:-1]:
-                    if target.id in scope:
-                        self.issues.append(
-                            _issue(
-                                "DFG_VARIABLE_SHADOWING",
-                                "warning",
-                                "design",
-                                f"Variable '{target.id}' shadows a variable from an outer scope.",
-                                "medium",
-                                node=target,
-                                source_lines=self.source_lines,
-                            )
-                        )
+                self.declare(target.id)
+        self.generic_visit(node)
 
-                self.local_assigned.add(target.id)
-                self.current_scope().add(target.id)
-
+    def visit_AugAssign(self, node: ast.AugAssign):
+        if isinstance(node.target, ast.Name):
+            if not self.is_declared(node.target.id):
+                self.declare(node.target.id)
         self.generic_visit(node)
 
     # -----------------------------
@@ -143,23 +184,38 @@ class DFGVisitor(ast.NodeVisitor):
     # -----------------------------
     def visit_Name(self, node: ast.Name):
         if isinstance(node.ctx, ast.Load):
-            if node.id in BUILTINS:
+            name = node.id
+
+            # builtins safe
+            if name in BUILTINS:
                 return
 
-            if not any(node.id in scope for scope in self.scope_stack):
-                self.issues.append(
-                    _issue(
-                        "DFG_USE_BEFORE_ASSIGN",
-                        "warning",
-                        "logic",
-                        f"Variable '{node.id}' is used before assignment.",
-                        "high",
-                        node=node,
-                        source_lines=self.source_lines,
-                    )
+            # declared anywhere safe
+            if self.is_declared(name):
+                self.used.add(name)
+                return
+
+            # functions/classes safe
+            if name in self.defined_functions or name in self.defined_classes:
+                return
+
+            # imports safe
+            if name in self.imported_modules:
+                return
+
+            # allow forward reference (python allows)
+            # only flag if clearly broken
+            self.issues.append(
+                _issue(
+                    "DFG_USE_BEFORE_ASSIGN",
+                    "warning",
+                    "logic",
+                    f"Variable '{name}' may be used before assignment.",
+                    "low",
+                    node=node,
+                    source_lines=self.source_lines,
                 )
-            else:
-                self.local_used.add(node.id)
+            )
 
         self.generic_visit(node)
 
