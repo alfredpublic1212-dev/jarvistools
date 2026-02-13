@@ -16,14 +16,14 @@ from core.sarif_exporter import to_sarif
 from core.org_policy_loader import load_org_policy
 from services.telemetry import log_review_event
 from services.usage_tracker import track_usage
-
+from services.routes.chat import router as chat_router
 
 # =========================
 # App init
 # =========================
 app = FastAPI(title="WISDOM AI Code Intelligence Engine")
 brain = ReviewBrain()
-
+app.include_router(chat_router)
 
 # =========================
 # Request Schema
