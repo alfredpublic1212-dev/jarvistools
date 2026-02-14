@@ -1,9 +1,8 @@
-# wisdomai/services/routes/chat.py
 from fastapi import APIRouter
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional
-import os
-import requests
+import os, json, requests
 
 from wisdom_brain.intent_engine import detect_intent
 from wisdom_brain.context_builder import build_context
@@ -11,21 +10,12 @@ from wisdom_brain.system_prompt import SYSTEM_PROMPT
 
 router = APIRouter()
 
-# ================================
-# ENV
-# ================================
 GROQ_KEY = os.getenv("LLM_API_KEY")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 MODEL = "llama-3.1-8b-instant"
 
-# ================================
-# SESSION MEMORY (in-RAM)
-# ================================
 CHAT_MEMORY: dict[str, list] = {}
 
-# ================================
-# Request schema
-# ================================
 class ChatRequest(BaseModel):
     message: str
     session_id: str
@@ -33,28 +23,18 @@ class ChatRequest(BaseModel):
     file: Optional[str] = ""
     language: Optional[str] = "python"
 
-# ================================
-# Main chat endpoint
-# ================================
 @router.post("/api/wisdom/chat")
-def wisdom_chat(req: ChatRequest):
+async def wisdom_chat(req: ChatRequest):
 
     if not GROQ_KEY:
-        return {
-            "success": False,
-            "reply": "LLM key missing on server."
-        }
+        return {"success": False, "reply": "LLM key missing."}
 
-    # -------------------------------
-    # get session history
-    # -------------------------------
     history = CHAT_MEMORY.get(req.session_id, [])
 
-    # =================================
-    # 🧠 WISDOM BRAIN PIPELINE
-    # =================================
+    # 🧠 INTENT
     intent = detect_intent(req.message)
 
+    # 🧠 CONTEXT
     context = build_context(
         message=req.message,
         intent=intent,
@@ -64,66 +44,65 @@ def wisdom_chat(req: ChatRequest):
         history=history
     )
 
-    # -------------------------------
-    # build messages for LLM
-    # -------------------------------
     messages = [
-        {
-            "role": "system",
-            "content": SYSTEM_PROMPT
-        },
-        {
-            "role": "system",
-            "content": context
-        }
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": context},
     ]
 
-    # previous chat memory
     for m in history[-8:]:
         messages.append(m)
 
-    # new user message
-    messages.append({
-        "role": "user",
-        "content": req.message
-    })
+    messages.append({"role": "user", "content": req.message})
 
-    # -------------------------------
-    # call GROQ LLM
-    # -------------------------------
-    try:
-        response = requests.post(
-            GROQ_URL,
-            headers={
-                "Authorization": f"Bearer {GROQ_KEY}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "model": MODEL,
-                "messages": messages,
-                "temperature": 0.5
-            },
-            timeout=60
-        )
+    def stream():
+        try:
+            with requests.post(
+                GROQ_URL,
+                headers={
+                    "Authorization": f"Bearer {GROQ_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": MODEL,
+                    "messages": messages,
+                    "temperature": 0.6,
+                    "stream": True
+                },
+                stream=True,
+                timeout=120
+            ) as r:
 
-        response.raise_for_status()
-        data = response.json()
-        reply = data["choices"][0]["message"]["content"]
+                full_reply = ""
 
-    except Exception as e:
-        return {
-            "success": False,
-            "reply": "Wisdom chat temporarily unavailable."
-        }
+                for line in r.iter_lines():
+                    if not line:
+                        continue
 
-    # -------------------------------
-    # save memory
-    # -------------------------------
-    history.append({"role": "user", "content": req.message})
-    history.append({"role": "assistant", "content": reply})
-    CHAT_MEMORY[req.session_id] = history[-20:]
+                    decoded = line.decode("utf-8")
 
-    return {
-        "success": True,
-        "reply": reply
-    }
+                    if decoded.startswith("data: "):
+                        data = decoded.replace("data: ", "")
+
+                        if data == "[DONE]":
+                            break
+
+                        try:
+                            json_data = json.loads(data)
+                            token = json_data["choices"][0]["delta"].get("content", "")
+
+                            if token:
+                                full_reply += token
+                                yield token
+
+                        except:
+                            continue
+
+                # save memory after stream finishes
+                history.append({"role": "user", "content": req.message})
+                history.append({"role": "assistant", "content": full_reply})
+                CHAT_MEMORY[req.session_id] = history[-20:]
+
+        except Exception as e:
+            yield "\n[Wisdom stream error]"
+
+    return StreamingResponse(stream(), media_type="text/plain")
