@@ -1,9 +1,13 @@
 # wisdomai/services/routes/chat.py
 from fastapi import APIRouter
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import Optional
 import os
 import requests
+
+from wisdom_brain.intent_engine import detect_intent
+from wisdom_brain.context_builder import build_context
+from wisdom_brain.system_prompt import SYSTEM_PROMPT
 
 router = APIRouter()
 
@@ -30,25 +34,6 @@ class ChatRequest(BaseModel):
     language: Optional[str] = "python"
 
 # ================================
-# Helper — build system prompt
-# ================================
-def build_system_prompt(code: str, file: str, language: str) -> str:
-    return f"""
-You are WISDOM AI — a senior software engineer and coding partner.
-
-Speak like a helpful senior developer friend.
-Casual but highly intelligent.
-Clear explanations.
-Give full code when needed.
-
-Current file: {file}
-Language: {language}
-
-User code context:
-{code[:4000] if code else "No code provided"}
-"""
-
-# ================================
 # Main chat endpoint
 # ================================
 @router.post("/api/wisdom/chat")
@@ -65,17 +50,35 @@ def wisdom_chat(req: ChatRequest):
     # -------------------------------
     history = CHAT_MEMORY.get(req.session_id, [])
 
+    # =================================
+    # 🧠 WISDOM BRAIN PIPELINE
+    # =================================
+    intent = detect_intent(req.message)
+
+    context = build_context(
+        message=req.message,
+        intent=intent,
+        code=req.code or "",
+        file=req.file or "",
+        language=req.language or "python",
+        history=history
+    )
+
     # -------------------------------
-    # build messages
+    # build messages for LLM
     # -------------------------------
     messages = [
         {
             "role": "system",
-            "content": build_system_prompt(req.code, req.file, req.language)
+            "content": SYSTEM_PROMPT
+        },
+        {
+            "role": "system",
+            "content": context
         }
     ]
 
-    # previous messages
+    # previous chat memory
     for m in history[-8:]:
         messages.append(m)
 
@@ -86,7 +89,7 @@ def wisdom_chat(req: ChatRequest):
     })
 
     # -------------------------------
-    # call GROQ
+    # call GROQ LLM
     # -------------------------------
     try:
         response = requests.post(
@@ -105,7 +108,6 @@ def wisdom_chat(req: ChatRequest):
 
         response.raise_for_status()
         data = response.json()
-
         reply = data["choices"][0]["message"]["content"]
 
     except Exception as e:
