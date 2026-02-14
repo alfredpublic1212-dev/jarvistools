@@ -1,3 +1,4 @@
+# services/routes/chat.py
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -7,14 +8,14 @@ import os, json, requests
 from wisdom_brain.intent_engine import detect_intent
 from wisdom_brain.context_builder import build_context
 from wisdom_brain.system_prompt import SYSTEM_PROMPT
+from services.project_memory import init_db, save_message, load_memory
 
 router = APIRouter()
-
+init_db()
 GROQ_KEY = os.getenv("LLM_API_KEY")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 MODEL = "llama-3.1-8b-instant"
 
-CHAT_MEMORY: dict[str, list] = {}
 
 class ChatRequest(BaseModel):
     message: str
@@ -29,7 +30,8 @@ async def wisdom_chat(req: ChatRequest):
     if not GROQ_KEY:
         return {"success": False, "reply": "LLM key missing."}
 
-    history = CHAT_MEMORY.get(req.session_id, [])
+    project_id = req.session_id
+    history = load_memory(project_id)
 
     # 🧠 INTENT
     intent = detect_intent(req.message)
@@ -98,9 +100,8 @@ async def wisdom_chat(req: ChatRequest):
                             continue
 
                 # save memory after stream finishes
-                history.append({"role": "user", "content": req.message})
-                history.append({"role": "assistant", "content": full_reply})
-                CHAT_MEMORY[req.session_id] = history[-20:]
+                save_message(project_id, "user", req.message)
+                save_message(project_id, "assistant", full_reply)
 
         except Exception as e:
             yield "\n[Wisdom stream error]"
