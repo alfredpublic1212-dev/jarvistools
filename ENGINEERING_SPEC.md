@@ -4,6 +4,54 @@
 ### Author: Alfred Jackson I
 
 ---
+# WISDOM AI — DETERMINISTIC CODE INTELLIGENCE ENGINE  
+## CANONICAL ENGINEERING SPECIFICATION (KERNEL-GRADE)
+
+### Version: 3.2  
+### Status: Enterprise Deterministic Engine + Integrated Developer Platform  
+### Author: Alfred Jackson I  
+### Last Updated: 2026  
+
+---
+
+# ENGINEERING DOCUMENT STATUS
+
+This document represents the canonical kernel-grade specification of the WISDOM AI deterministic code intelligence engine.
+
+The deterministic core architecture defined here is considered **architecturally sealed and stable**.
+
+Subsequent platform layers (DevSync UI, streaming AI interface, editor integration, and developer intelligence tooling) operate **on top of this deterministic kernel** without modifying its authority or invariants.
+
+This document therefore governs:
+
+• deterministic reasoning engine  
+• policy enforcement system  
+• security model  
+• audit & usage tracking  
+• CI/CD integration  
+• enterprise guarantees  
+
+while remaining compatible with the evolving developer platform layer.
+
+---
+
+# CURRENT SYSTEM PHASE STATUS
+
+Phase A — Deterministic Core Foundation 
+Phase B — Structural Intelligence 
+Phase C — Semantic & Taint Engine 
+Phase D — Architectural Intelligence 
+Phase E — Advisory Intelligence  
+Phase F — LLM Explanation Layer (Contained) 
+Phase G — Platformization & SARIF Export 
+Phase H — Enterprise Hardening (Security, Policy Signing, Audit) 
+Phase I — Developer Intelligence Platform Integration (DevSync + AI Panel + Streaming) 
+
+Current System Classification:
+
+Enterprise Deterministic Code Intelligence Engine  
+with Integrated Developer Intelligence Platform
+
 
 # SECTION 1 — SYSTEM PHILOSOPHY, FOUNDATIONAL LAWS & NON‑NEGOTIABLE INVARIANTS
 
