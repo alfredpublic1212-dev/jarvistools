@@ -1,3 +1,4 @@
+#wisdom_brain/context_builder.py
 def build_context(message, code=None, file=None, language=None, history=None, intent="general"):
     
     ctx = f"""

@@ -1,3 +1,4 @@
+# wisdom_brain/intent_engine.py
 def detect_intent(message: str) -> str:
     msg = message.lower()
 

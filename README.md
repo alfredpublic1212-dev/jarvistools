@@ -1,91 +1,132 @@
-# WISDOM AI — Deterministic Code Intelligence Engine
-## Product + Platform Architecture & Technical Design Specification
+# 🧠 WISDOM AI — Deterministic Code Intelligence Engine
 
+## Enterprise Static Analysis Platform + AI Developer Intelligence Layer
 
-**Version:** 2.0 (Phase H Complete)<br>
-**Status:** Enterprise-Grade Deterministic Engine<br>
-**Audience:** System Architects, Platform Engineers, Security Reviewers, Technical Evaluators<br>
-**Deployment:** Render Cloud (Stateless Microservice)<br>
-**Author:** Alfred Jackson I
+**Version:** 3.0 (Platform Integrated)
+**Status:** Enterprise-Grade Deterministic Intelligence Engine
+**Deployment:** Render Cloud (Stateless Microservice)
+**Author:** Alfred Jackson
 
 ---
 
 # 1. Overview
 
-**WISDOM AI** is a deterministic code intelligence engine designed to analyze source code for:
+**WISDOM AI** is an enterprise-grade deterministic code intelligence engine designed to analyze source code for:
 
-- security risks
-- structural issues
-- maintainability problems
-- policy violations
+* security risks
+* structural issues
+* maintainability problems
+* architectural weaknesses
+* policy violations
 
-The system performs static analysis and semantic reasoning without executing code.
+The system performs **deterministic static analysis + semantic reasoning** without executing code.
 
-This is not a chatbot.  
-This is not a code generator.  
-This is not a wrapper over ChatGPT.
+This is **NOT**:
 
-It is a **deterministic static code intelligence engine**.
+* a chatbot
+* a code generator
+* a ChatGPT wrapper
 
----
-
-# 2. Academic Explanation of the AI Component
-
-The system performs deterministic static code analysis combined with an optional natural-language explanation layer to assist developers in understanding code quality, security, and maintainability issues.
-
-The core system is deterministic and rule-based, built using static code analysis techniques such as:
-
-- AST parsing
-- control-flow analysis
-- data-flow tracking
-- structural analysis
-- policy evaluation
-
-AI is used only as an optional explanation layer that converts verified analysis results into human-readable review feedback.
-
-This ensures reliability, reproducibility, and prevents hallucinations while still providing an intelligent developer experience.
-
-Approximately:
-
-- 80–90% deterministic static analysis
-- 10–20% optional AI explanation
-
-The AI does not decide correctness.
-The AI does not enforce policy.
-The AI does not generate findings.
+This is a **deterministic static code intelligence engine** with an optional AI explanation layer and integrated developer platform.
 
 ---
 
-# 3. Core Design Principles
+# 2. Core Positioning
+
+WISDOM AI is comparable to:
+
+* SonarQube core engine
+* Semgrep static analysis
+* CodeQL intelligence
+
+But designed to be:
+
+* fully self-owned
+* deterministic
+* auditable
+* enterprise-secure
+* AI-assisted for readability
+
+Built as a **real code intelligence system**, not a demo project.
+
+---
+
+# 3. Academic Explanation of Intelligence Model
+
+The system uses deterministic static code analysis combined with an optional AI explanation layer.
+
+### Deterministic Core (Primary)
+
+Uses:
+
+* AST parsing
+* control-flow analysis
+* data-flow tracking
+* structural analysis
+* rule evaluation
+* policy enforcement
+
+### Optional AI Layer (Secondary)
+
+Used only to:
+
+* convert deterministic findings into readable explanations
+* provide developer-friendly feedback
+
+The AI layer:
+
+* cannot add findings
+* cannot override results
+* cannot enforce policy
+* cannot change severity
+
+### Intelligence Composition
+
+```
+80–90% deterministic static analysis  
+10–20% AI explanation layer
+```
+
+This ensures:
+
+* reproducibility
+* zero hallucinations
+* enterprise reliability
+
+---
+
+# 4. Core Design Principles
 
 1. Deterministic output for identical input
 2. Stateless architecture
 3. Zero code execution
-4. No memory persistence
+4. No persistent memory
 5. Cryptographically enforced policy
 6. Organization-isolated configuration
 7. Enterprise-safe deployment
+8. Streaming developer interaction layer
 
 ---
 
-# 4. System Architecture
+# 5. System Architecture
 
 ```
-Client / DevSync UI
+DevSync / Client UI
         |
         v
-HTTP API (FastAPI)
+Next.js API Layer
         |
         v
-WISDOM AI Sandbox Engine
+WISDOM AI Cloud Engine (FastAPI)
         |
         ├── AST Analyzer
-        ├── Structural Analyzer
+        ├── Structural Intelligence
         ├── Semantic Engine
         ├── Policy Engine
         ├── Audit Logger
         ├── Usage Tracker
-        └── Rate Limiter
+        ├── Rate Limiter
+        └── AI Explanation Layer
 ```
 
 The service behaves as a pure function:
@@ -96,233 +137,267 @@ Input code → deterministic analysis → structured findings
 
 ---
 
-# 5. Intelligence Layers
+# 6. Intelligence Layers
 
-## 5.1 Structural Intelligence
+## 6.1 Structural Intelligence
 
-- AST parsing
-- naming checks
-- unused imports
-- complexity warnings
-- code hygiene
+* AST parsing
+* naming checks
+* unused imports
+* complexity warnings
+* code hygiene
 
-## 5.2 Semantic Intelligence
+## 6.2 Semantic Intelligence
 
-- control flow analysis
-- data flow tracking
-- taint propagation
-- resource misuse detection
-- unreachable code detection
+* control flow analysis
+* data flow tracking
+* taint propagation
+* resource misuse detection
+* unreachable code detection
 
-## 5.3 Policy Engine
+## 6.3 Architectural Intelligence
+
+* module responsibility analysis
+* mixed concerns detection
+* god-file detection
+* scalability risks
+
+## 6.4 Policy Engine
 
 Deterministic enforcement:
 
-- error count
-- warning thresholds
-- org-specific policy
-- CI pass/fail decision
+* issue thresholds
+* org-level policy
+* CI pass/fail
+* signed policy verification
 
-## 5.4 Optional AI Explanation Layer
+## 6.5 Optional AI Explanation Layer
 
-Used only to translate deterministic findings into readable explanations.
+Used only to explain deterministic findings.
 
 Cannot:
-- add findings
-- modify results
-- override policy
+
+* generate findings
+* modify severity
+* override policy
 
 ---
 
-# 6. Security Architecture
+# 7. Security Architecture
 
-## 6.1 Cryptographic Policy Signing
+## 7.1 Cryptographic Policy Signing
 
-Each org policy is RSA signed.
+Each organization policy is RSA signed.
+
 Server verifies signature before loading.
 
 Prevents:
-- tampering
-- unauthorized rule changes
-- malicious config injection
 
-## 6.2 API Key Authentication
+* tampering
+* malicious rule changes
+* unauthorized config injection
 
-Every request must include:
+## 7.2 API Authentication
+
+All requests require:
 
 ```
 x-api-key: <org_key>
 ```
 
-Server resolves:
-- organization identity
-- policy
-- usage tracking
-- rate limits
+Resolves:
 
-## 6.3 Audit Logging
+* organization identity
+* policy
+* usage limits
+* rate limits
 
-Every scan produces structured audit event:
+## 7.3 Audit Logging
 
-```
-{"event":"review_completed","org":"devsync",...}
-```
+Each scan produces structured audit event:
 
-Tracks:
-- org
-- file
-- issues
-- policy result
-- processing time
-
-## 6.4 Usage Tracking
-
-Per-org scan tracking.
-Stored as JSON (no DB required).
-
-## 6.5 Rate Limiting
-
-Per-org daily limits enforced.
-Example:
-
-```
-100 scans/day
-```
-
-Blocks abuse and protects system.
-
----
-
-# 7. Phase Completion Status
-
-## Phase A — Foundation
-- Stateless engine
-- Cloud deploy
-- HTTP API
-
-## Phase B — Structural Intelligence
-- AST analysis
-- rule engine
-- deduplication
-
-## Phase C — Semantic Intelligence
-- CFG
-- DFG
-- taint tracking
-- resource analysis
-
-## Phase D — Architectural Intelligence
-- module hygiene
-- mixed concerns
-- god module detection
-
-## Phase E — Advisory Intelligence
-- deterministic explanations
-- remediation guidance
-
-## Phase F — AI Presentation Layer
-- explanation-only LLM
-- no decision authority
-
-## Phase G — Platformization
-- unified schema
-- SARIF export
-- autofix suggestions
-- policy engine
-
-## Phase H — Enterprise Hardening (COMPLETE)
-- signed policies
-- org isolation
-- tamper verification
-- audit logging
-- usage tracking
-- API authentication
-- rate limiting
-
-System is now enterprise-grade.
-
----
-
-# 8. Deployment & Live Service Testing
-
-Base URL:
-https://wisdom-ai-fn24.onrender.com
-
-## Health Check (wake server)
-GET
-https://wisdom-ai-fn24.onrender.com.com/health
-
-## Main Review Endpoint
-POST
-https://wisdom-ai-fn24.onrender.com.com/review
-
-Headers:
-```
-x-api-key: devsync_live_abc123
-Content-Type: application/json
-```
-
-Body:
 ```
 {
-  "file": "test.py",
-  "language": "python",
-  "code": "print('hello world')",
-  "scope": "file",
-  "policy": {
-    "org": "devsync"
-  }
+ "event":"review_completed",
+ "org":"devsync",
+ "issues":4
 }
 ```
 
-## Schema Endpoint
-GET
-https://wisdom-ai-fn24.onrender.com/review/schema
+Tracks:
 
-## SARIF Export
-POST
-https://wisdom-ai-fn24.onrender.com/review/sarif
+* org
+* file
+* issue count
+* policy result
+* processing time
+
+## 7.4 Usage Tracking
+
+Per-org usage stored without database.
+
+## 7.5 Rate Limiting
+
+Per-org daily scan limits enforced.
 
 ---
 
-# 9. Local Development
+# 8. Platform Integration (Dev Environment)
 
-Run locally:
+WISDOM AI now operates as a full developer intelligence platform.
+
+Integrated features:
+
+### AI Chat Interface
+
+* context-aware coding chat
+* file-aware prompts
+* streaming responses
+* debugging assistance
+
+### Deterministic Code Review Panel
+
+* security findings
+* performance risks
+* architecture warnings
+* structured issue output
+
+### Streaming Intelligence UX
+
+```
+Editor → API → Wisdom Engine → Stream → UI
+```
+
+### Modular UI Architecture
+
+```
+AI Panel
+ ├── Chat system
+ └── Deterministic review system
+```
+
+---
+
+# 9. Phase Completion Status
+
+## Phase A — Foundation
+
+* Stateless engine
+* Cloud deployment
+* HTTP API
+
+## Phase B — Structural Intelligence
+
+* AST analysis
+* rule engine
+* deduplication
+
+## Phase C — Semantic Intelligence
+
+* CFG
+* DFG
+* taint tracking
+* resource analysis
+
+## Phase D — Architectural Intelligence
+
+* module hygiene
+* mixed concerns
+* god module detection
+
+## Phase E — Advisory Intelligence
+
+* deterministic remediation guidance
+
+## Phase F — AI Explanation Layer
+
+* explanation-only LLM
+* no decision authority
+
+## Phase G — Platformization
+
+* unified schema
+* SARIF export
+* autofix suggestions
+* CI policy engine
+
+## Phase H — Enterprise Hardening 
+
+* signed policies
+* org isolation
+* audit logging
+* usage tracking
+* API authentication
+* rate limiting
+
+## Phase I — Developer Intelligence Platform 
+
+* integrated AI chat system
+* streaming response engine
+* DevSync editor integration
+* unified AI review panel
+* modular UI architecture
+
+System status: **Enterprise + Platform ready**
+
+---
+
+# 10. Live Service
+
+Base:
+
+```
+https://wisdom-ai-fn24.onrender.com
+```
+
+### Health
+
+```
+GET /health
+```
+
+### Review Endpoint
+
+```
+POST /review
+```
+
+### SARIF Export
+
+```
+POST /review/sarif
+```
+
+### Schema
+
+```
+GET /review/schema
+```
+
+---
+
+# 11. Local Development
+
+Run engine locally:
+
 ```
 uvicorn services.wisdom_service:app --reload --port 8000
 ```
 
 ---
 
-# 10. Policy Signing Rule (Critical)
+# 12. Final Positioning
 
-If editing:
-```
-core/org_policies/devsync.json
-```
-You MUST run:
-```
-python core/security/sign_policy.py
-```
-before deploy.
+WISDOM AI is a deterministic code intelligence engine designed for:
 
-Otherwise server will reject policy.
+* enterprise static analysis
+* secure code review
+* developer intelligence platforms
+* CI/CD integration
+* future autonomous code auditing
 
----
+It is built as a **serious engineering system**, not a demo or wrapper.
 
-# 11. Final Positioning
-
-WISDOM AI is a deterministic code intelligence engine comparable to:
-
-- SonarQube core
-- Semgrep engine
-- CodeQL static analysis
-
-But:
-- self-owned
-- deterministic
-- auditable
-- secure
-
-Built as an enterprise-grade analysis engine, not a demo project.
-
+> Deterministic core.
+> Auditable intelligence.
+> Enterprise-grade code reasoning.
