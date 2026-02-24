@@ -1,4 +1,4 @@
-# 🧠 WISDOM AI — Deterministic Code Intelligence Engine
+#  WISDOM AI — Deterministic Code Intelligence Engine
 
 ## Enterprise Static Analysis Platform + AI Developer Intelligence Layer
 
